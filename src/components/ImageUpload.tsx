@@ -44,7 +44,7 @@ export default function ImageUpload({ value, onChange, label = "Image" }: ImageU
       formData.append('image', file);
 
       // Upload to server
-      const response = await fetch('http://localhost:3001/api/upload', {
+      const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
