@@ -294,9 +294,28 @@ import { getPackages as getStoredPackages, savePackage } from "./storage";
 
 export function getTravelPackages(): TravelPackage[] {
   const stored = getStoredPackages();
+  const isVercelDeployment = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
+  
+  // Clean up packages with broken image paths on Vercel
+  if (isVercelDeployment && stored.length > 0) {
+    const cleaned = stored.filter(pkg => {
+      // Remove packages with uploaded image paths that won't exist on Vercel
+      return !pkg.image.startsWith('/uploads/');
+    });
+    
+    // If all packages had broken images, use defaults
+    if (cleaned.length === 0) {
+      travelPackages.forEach(pkg => savePackage(pkg));
+      return travelPackages;
+    }
+    
+    return cleaned;
+  }
+  
   if (stored.length > 0) {
     return stored;
   }
+  
   // Initialize with default packages
   travelPackages.forEach(pkg => savePackage(pkg));
   return travelPackages;

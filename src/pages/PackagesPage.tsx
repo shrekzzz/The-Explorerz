@@ -63,6 +63,11 @@ function PackageCard({ pkg, index }: { pkg: TravelPackage; index: number }) {
   const diff = pkg.difficulty ? difficultyMeta[pkg.difficulty] : null;
   const DiffIcon = diff?.icon;
   const isAvailable = pkg.status === "available";
+  const [imageFailed, setImageFailed] = useState(false);
+
+  const handleImageError = () => {
+    setImageFailed(true);
+  };
 
   return (
     <motion.div
@@ -76,13 +81,21 @@ function PackageCard({ pkg, index }: { pkg: TravelPackage; index: number }) {
       <Link to={`/packages/${pkg.id}`} className="block">
         <div className="relative bg-card/80 backdrop-blur-sm border border-border/60 rounded-2xl overflow-hidden hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-400">
           {/* Image */}
-          <div className="relative h-52 overflow-hidden">
-            <img
-              src={resolveImageUrl(pkg.image)}
-              alt={pkg.title}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-              loading="lazy"
-            />
+          <div className="relative h-52 overflow-hidden bg-muted">
+            {imageFailed ? (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                <Mountain className="w-12 h-12 text-muted-foreground/50 mb-2" />
+                <p className="text-xs text-muted-foreground">Image unavailable</p>
+              </div>
+            ) : (
+              <img
+                src={resolveImageUrl(pkg.image)}
+                alt={pkg.title}
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                loading="lazy"
+                onError={handleImageError}
+              />
+            )}
             {/* Gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 

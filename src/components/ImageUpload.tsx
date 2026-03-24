@@ -15,6 +15,10 @@ export default function ImageUpload({ value, onChange, label = "Image" }: ImageU
   const [isUploading, setIsUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isVercelDeployment] = useState(() => {
+    // Check if running on Vercel deployment
+    return typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
+  });
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -29,6 +33,11 @@ export default function ImageUpload({ value, onChange, label = "Image" }: ImageU
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast.error("File size must be less than 5MB");
+      return;
+    }
+
+    if (isVercelDeployment) {
+      toast.error("Image upload is not available on the live preview. Please use an image URL instead.");
       return;
     }
 

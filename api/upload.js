@@ -6,42 +6,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, '..', 'public', 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const extension = path.extname(file.originalname);
-    const basename = path.basename(file.originalname, extension);
-    cb(null, `${basename}-${uniqueSuffix}${extension}`);
-  }
-});
-
-// File filter to only allow images
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only image files are allowed!'), false);
-  }
-};
-
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  }
-});
+// Note: File uploads are not available on Vercel serverless functions
+// as the filesystem is ephemeral. This endpoint returns an error message.
 
 export default function handler(req, res) {
   if (req.method !== 'POST') {
@@ -49,32 +15,16 @@ export default function handler(req, res) {
     return;
   }
 
-  // Use multer as middleware
-  upload.single('image')(req, res, (err) => {
-    if (err) {
-      console.error('Upload error:', err);
-      res.status(500).json({ error: 'Failed to upload image' });
-      return;
-    }
-
-    if (!req.file) {
-      res.status(400).json({ error: 'No file uploaded' });
-      return;
-    }
-
-    // Return the file path relative to public folder
-    const filePath = `/uploads/${req.file.filename}`;
-    res.status(200).json({
-      success: true,
-      filePath: filePath,
-      filename: req.file.filename,
-      message: 'Image uploaded successfully'
-    });
+  // Vercel serverless functions have ephemeral filesystems
+  // Uploaded files won't persist between deployments
+  res.status(503).json({ 
+    error: 'Image upload is not available on this deployment',
+    message: 'For production file storage, integrate with Vercel Blob, AWS S3, or similar cloud storage services'
   });
 }
 
 export const config = {
   api: {
-    bodyParser: false, // Disable body parsing, let multer handle it
+    bodyParser: false,
   },
 };
