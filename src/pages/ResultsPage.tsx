@@ -55,34 +55,31 @@ export default function ResultsPage() {
 
       <div className="pt-20">
         {/* Header */}
-        <div className="border-b border-border bg-card">
-          <div className="container mx-auto px-4 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => navigate("/plan")}>
+        <div className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-16 z-30">
+          <div className="container mx-auto px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate("/plan")}>
                 <ArrowLeft className="w-4 h-4" />
               </Button>
-              <div>
-                <h1 className="font-display text-2xl font-bold text-foreground">
+              <div className="min-w-0">
+                <h1 className="font-display text-lg sm:text-2xl font-bold text-foreground truncate">
                   {trip.destination}
                 </h1>
-                <p className="text-sm text-muted-foreground">
-                  {trip.days} days · ${trip.budget} budget · {trip.interests.join(", ")}
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                  {trip.days} days · ₹{trip.budget.toLocaleString("en-IN")} · {trip.interests.slice(0, 3).join(", ")}{trip.interests.length > 3 ? " +more" : ""}
                 </p>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleRegenerate} className="gap-1">
-                <RefreshCw className="w-3.5 h-3.5" /> Regenerate
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button variant="outline" size="sm" onClick={handleRegenerate} className="gap-1 flex-1 sm:flex-none">
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Regenerate</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={handleShare} className="gap-1">
-                <Share2 className="w-3.5 h-3.5" /> Share
+              <Button variant="outline" size="sm" onClick={handleShare} className="gap-1 flex-1 sm:flex-none">
+                <Share2 className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Share</span>
               </Button>
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={saved}
-                className="gap-1"
-              >
+              <Button size="sm" onClick={handleSave} disabled={saved} className="gap-1 flex-1 sm:flex-none bg-gradient-to-r from-primary to-violet-500 hover:from-primary/90 hover:to-violet-500/90">
                 <Bookmark className="w-3.5 h-3.5" />
                 {saved ? "Saved" : "Save"}
               </Button>
@@ -91,25 +88,10 @@ export default function ResultsPage() {
         </div>
 
         {/* Main content */}
-        <div className="flex flex-col" style={{ minHeight: "calc(100vh - 140px)" }}>
-          <div className="w-full overflow-y-auto p-6 space-y-6">
-            <ItineraryTimeline
-              itinerary={trip.itinerary}
-              onActivityClick={setSelectedActivity}
-            />
-            <BudgetBreakdownCard
-              breakdown={trip.budgetBreakdown}
-              totalBudget={trip.budget}
-            />
-            <HotelRecommendations hotels={trip.hotels} />
-          </div>
-
-          <div className="p-6 border-t border-border bg-card/50 rounded-b-3xl">
-            <h2 className="text-lg font-bold text-foreground">Enjoy your curated plan</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Map view is temporarily disabled for users; itinerary and budget details are ready.
-            </p>
-          </div>
+        <div className="container mx-auto max-w-4xl px-4 py-6 space-y-6">
+          <ItineraryTimeline itinerary={trip.itinerary} onActivityClick={setSelectedActivity} />
+          <BudgetBreakdownCard breakdown={trip.budgetBreakdown} totalBudget={trip.budget} />
+          <HotelRecommendations hotels={trip.hotels} />
         </div>
       </div>
       <Footer />
