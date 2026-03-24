@@ -1,8 +1,10 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Plane, MapPin, Sparkles, DollarSign, Calendar, ArrowRight, Star, Mountain, Hotel, TrainFront, TreePine, Waves, Building2, CloudSun } from "lucide-react";
+import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { travelPackages } from "@/lib/packages";
+import { getTravelPackages } from "@/lib/packages";
 import Navbar from "@/components/Navbar";
 
 const floatingIcons = [
@@ -19,7 +21,7 @@ const floatingIcons = [
 ];
 
 const features = [
-  { icon: Sparkles, title: "AI-Powered Plans", desc: "Get a complete day-by-day itinerary generated in seconds.", gradient: "from-primary via-accent to-blue-500", bgGradient: "from-primary/10 via-accent/5 to-blue-500/10" },
+  { icon: Sparkles, title: "Custom Plans", desc: "Get a complete day-by-day itinerary crafted for you in seconds.", gradient: "from-primary via-accent to-blue-500", bgGradient: "from-primary/10 via-accent/5 to-blue-500/10" },
   { icon: MapPin, title: "Interactive Maps", desc: "See all your destinations, routes, and hotels on a live map.", gradient: "from-emerald-500 via-teal-400 to-cyan-500", bgGradient: "from-emerald-500/10 via-teal-400/5 to-cyan-500/10" },
   { icon: DollarSign, title: "Budget Tracking", desc: "Stay on budget with automatic cost estimation and breakdown.", gradient: "from-amber-500 via-orange-400 to-yellow-500", bgGradient: "from-amber-500/10 via-orange-400/5 to-yellow-500/10" },
   { icon: Calendar, title: "Day-by-Day View", desc: "Organized timeline with activities, times, and locations.", gradient: "from-violet-500 via-purple-400 to-pink-500", bgGradient: "from-violet-500/10 via-purple-400/5 to-pink-500/10" },
@@ -33,36 +35,34 @@ const stats = [
 ];
 
 export default function LandingPage() {
+  const [packages, setPackages] = useState([]);
+
+  useEffect(() => {
+    setPackages(getTravelPackages());
+  }, []);
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 overflow-hidden">
       <Navbar />
 
       {/* Hero with 3D Scene */}
-      <section className="relative pt-40 pb-32 px-4 min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-accent/5 to-purple-500/10" style={{backgroundImage: 'url(/hero-bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed'}}>
+      <section className="relative pt-24 sm:pt-32 lg:pt-40 pb-16 sm:pb-24 lg:pb-32 px-4 min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-accent/5 to-purple-500/10" style={{backgroundImage: 'url(/hero-bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed'}}>
         <div className="container mx-auto text-center max-w-4xl relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7 }}
           >
-            <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-primary via-accent to-purple-500 text-white text-sm font-semibold mb-8 shadow-lg shadow-primary/25 border border-white/20"
-            >
-              <Sparkles className="w-4 h-4 animate-pulse text-yellow-300" />
-              AI-Powered Travel Planning
-            </motion.div>
+            
 
-            <h1 className="font-display text-white text-5xl sm:text-6xl lg:text-7xl font-extrabold text-foreground leading-[1.1] mb-6 tracking-tight">
-              Explore the world,{" "}
+            <h1 className="font-display text-white text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold text-foreground leading-[1.1] mb-6 tracking-tight">
+              <br />
+              Explore the world,{" "}<br />
               <span className="relative">
-                <span className="bg-gradient-to-r from-primary via-accent to-purple-500 bg-clip-text text-transparent animate-pulse">
-                  planned by AI
+                <span className="bg-gradient-to-r from-primary to-violet-500  bg-clip-text text-transparent animate-pulse">
+                  Plan less. Travel more!
                 </span>
                 <motion.span
-                  className="absolute -bottom-2 left-0 right-0 h-2 bg-gradient-to-r from-primary via-accent to-purple-500 rounded-full shadow-lg"
+                  className="absolute -bottom-2 left-0 right-0 h-2 bg-gradient-to-r from-primary to-violet-500  rounded-full shadow-lg"
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: 1 }}
                   transition={{ delay: 0.8, duration: 0.6 }}
@@ -70,9 +70,8 @@ export default function LandingPage() {
               </span>
             </h1>
 
-            <p className="text-lg text-white sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-              Tell us your dream destination and watch as AI crafts a personalized
-              itinerary with hotels, routes, costs, and hidden gems — all in seconds.
+            <p className="text-white text-base sm:text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+             Tell us your dream destination and we’ll craft a personalized itinerary with hotels, routes, estimated costs, and hidden gems just for you.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -213,7 +212,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-8">
             {[
               { step: "01", icon: MapPin, title: "Choose Destination", desc: "Enter where you want to go, your budget, and interests." },
-              { step: "02", icon: Sparkles, title: "AI Generates Plan", desc: "Our AI creates a complete day-by-day itinerary instantly." },
+              { step: "02", icon: Sparkles, title: "We Plan Your Trip", desc: "We create a complete day-by-day itinerary instantly." },
               { step: "03", icon: Plane, title: "Explore & Travel", desc: "View your plan on the map, save it, and start your adventure!" },
             ].map((item, i) => {
               const Icon = item.icon;
@@ -309,7 +308,7 @@ export default function LandingPage() {
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {travelPackages.slice(0, 3).map((pkg, i) => (
+            {packages.slice(0, 3).map((pkg, i) => (
               <motion.div
                 key={pkg.id}
                 initial={{ opacity: 0, y: 30 }}
@@ -361,7 +360,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="relative bg-gradient-to-br from-primary via-accent to-purple-500 rounded-3xl p-12 sm:p-16 overflow-hidden shadow-2xl shadow-primary/25"
+            className="relative bg-gradient-to-r from-primary to-violet-500 rounded-3xl p-12 sm:p-16 overflow-hidden shadow-2xl shadow-primary/25"
           >
             {/* Decorative circles */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-white/20 to-white/5 rounded-full -translate-y-1/2 translate-x-1/2 animate-pulse" />
@@ -373,7 +372,7 @@ export default function LandingPage() {
                 Ready to explore?
               </h2>
               <p className="text-primary-foreground/80 text-lg mb-8 max-w-lg mx-auto">
-                Create your free AI-powered travel plan now. No sign-up required. Your next adventure is just a click away.
+                Create your free travel plan now. No sign-up required. Your next adventure is just a click away.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link to="/plan">
@@ -392,21 +391,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border py-10 px-4 bg-gradient-to-r from-card/50 via-primary/5 to-accent/5">
-        <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Plane className="w-5 h-5 text-primary" />
-            <span className="font-display text-xl font-extrabold text-foreground">DeshYatra <span className="text-primary">Co.</span></span>
-          </div>
-          <p>© 2025 DeshYatra Co. — AI-Powered Travel Planning</p>
-          <div className="flex gap-4 text-xs">
-            <span className="flex items-center gap-1"><Mountain className="w-3 h-3" /> Treks</span>
-            <span className="flex items-center gap-1"><TrainFront className="w-3 h-3" /> Routes</span>
-            <span className="flex items-center gap-1"><Hotel className="w-3 h-3" /> Hotels</span>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

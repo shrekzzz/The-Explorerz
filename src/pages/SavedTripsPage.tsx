@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { TripPlan } from "@/types/trip";
 import { getSavedTrips, deleteTrip, shareTripUrl } from "@/lib/storage";
 import { toast } from "sonner";
@@ -92,7 +93,7 @@ function EmptyState() {
 
       <h2 className="font-display text-2xl font-bold text-foreground mb-2">No saved trips yet</h2>
       <p className="text-muted-foreground max-w-sm mb-8 text-sm leading-relaxed">
-        Plan your first AI-powered trip and save it here. Your adventures are waiting!
+        Plan your first trip and save it here. Your adventures are waiting!
       </p>
       <div className="flex gap-3">
         <Link to="/plan">
@@ -459,18 +460,7 @@ export default function SavedTripsPage() {
         </div>
       </div>
 
-      {/* ── Footer ── */}
-      <footer className="border-t border-border/40 py-8 px-4 bg-card/30 backdrop-blur-sm">
-        <div className="container mx-auto max-w-5xl flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Plane className="w-4 h-4 text-primary" />
-            <span className="font-display font-bold text-foreground">
-              DeshYatra <span className="text-primary">Co.</span>
-            </span>
-          </div>
-          <p>© 2025 DeshYatra Co. — AI-Powered Travel Planning</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

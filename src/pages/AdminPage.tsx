@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import Navbar from "@/components/Navbar";
+import ImageUpload from "@/components/ImageUpload";
 import { TravelPackage, getTravelPackages } from "@/lib/packages";
 import { savePackage, deletePackage } from "@/lib/storage";
 
@@ -46,6 +47,7 @@ export default function AdminPage() {
       highlights: [],
       bestTime: "",
       included: [],
+      status: "coming-soon",
     };
     setEditingPackage(newPackage);
     setIsAddDialogOpen(true);
@@ -106,6 +108,9 @@ export default function AdminPage() {
                     <p className="text-muted-foreground">{pkg.subtitle}</p>
                     <div className="flex items-center gap-4 mt-2">
                       <Badge variant="outline">{pkg.category}</Badge>
+                      <Badge variant={pkg.status === "available" ? "default" : "secondary"}>
+                        {pkg.status === "available" ? "Available" : "Coming Soon"}
+                      </Badge>
                       <span className="flex items-center gap-1 text-sm">
                         <Clock className="w-4 h-4" /> {pkg.duration}
                       </span>
@@ -273,13 +278,25 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="image">Image URL</Label>
-                  <Input
-                    id="image"
-                    value={editingPackage.image}
-                    onChange={(e) => updateEditingPackage("image", e.target.value)}
-                  />
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    value={editingPackage.status || "coming-soon"}
+                    onValueChange={(value) => updateEditingPackage("status", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="available">Available</SelectItem>
+                      <SelectItem value="coming-soon">Coming Soon</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+                <ImageUpload
+                  value={editingPackage.image}
+                  onChange={(value) => updateEditingPackage("image", value)}
+                  label="Package Image"
+                />
                 <div>
                   <Label htmlFor="locations">Locations (comma-separated)</Label>
                   <Input
@@ -427,13 +444,25 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="add-image">Image URL</Label>
-                  <Input
-                    id="add-image"
-                    value={editingPackage.image}
-                    onChange={(e) => updateEditingPackage("image", e.target.value)}
-                  />
+                  <Label htmlFor="add-status">Status</Label>
+                  <Select
+                    value={editingPackage.status || "coming-soon"}
+                    onValueChange={(value) => updateEditingPackage("status", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="available">Available</SelectItem>
+                      <SelectItem value="coming-soon">Coming Soon</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+                <ImageUpload
+                  value={editingPackage.image}
+                  onChange={(value) => updateEditingPackage("image", value)}
+                  label="Package Image"
+                />
                 <div>
                   <Label htmlFor="add-locations">Locations (comma-separated)</Label>
                   <Input

@@ -13,6 +13,7 @@ export interface TravelPackage {
   bestTime: string;
   difficulty?: "Easy" | "Moderate" | "Difficult" | "Extreme";
   included: string[];
+  status: "available" | "coming-soon";
 }
 
 export const packageCategories = [
@@ -34,7 +35,7 @@ export const travelPackages: TravelPackage[] = [
     price: 25000,
     rating: 4.8,
     reviews: 2340,
-    image: "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=600&q=80",
+    image: "/Chardham-Temple.jpg",
     locations: ["Yamunotri", "Gangotri", "Kedarnath", "Badrinath"],
     highlights: [
       "Visit all four sacred shrines in Uttarakhand",
@@ -44,6 +45,7 @@ export const travelPackages: TravelPackage[] = [
     ],
     bestTime: "May – June, Sep – Oct",
     included: ["Accommodation", "Meals", "Transport", "Guide", "Permits"],
+    status: "available",
   },
   {
     id: "do-dham",
@@ -64,6 +66,7 @@ export const travelPackages: TravelPackage[] = [
     ],
     bestTime: "May – June, Sep – Oct",
     included: ["Accommodation", "Meals", "Transport", "Guide"],
+    status: "available",
   },
   {
     id: "12-jyotirlinga",
@@ -88,6 +91,7 @@ export const travelPackages: TravelPackage[] = [
     ],
     bestTime: "Oct – Mar",
     included: ["Accommodation", "Meals", "Flights", "Transport", "Puja", "Guide"],
+    status: "coming-soon",
   },
   {
     id: "valley-of-flowers",
@@ -109,6 +113,7 @@ export const travelPackages: TravelPackage[] = [
     bestTime: "Jul – Sep",
     difficulty: "Moderate",
     included: ["Camping", "Meals", "Guide", "Permits", "Equipment"],
+    status: "coming-soon",
   },
   {
     id: "kedarkantha",
@@ -130,6 +135,7 @@ export const travelPackages: TravelPackage[] = [
     bestTime: "Dec – Apr",
     difficulty: "Easy",
     included: ["Camping", "Meals", "Guide", "Equipment", "Transport from Dehradun"],
+    status: "coming-soon",
   },
   {
     id: "hampta-pass",
@@ -151,6 +157,7 @@ export const travelPackages: TravelPackage[] = [
     bestTime: "Jun – Oct",
     difficulty: "Moderate",
     included: ["Camping", "Meals", "Guide", "Equipment", "Transport"],
+    status: "coming-soon",
   },
   {
     id: "roopkund",
@@ -172,6 +179,7 @@ export const travelPackages: TravelPackage[] = [
     bestTime: "May – Jun, Sep – Oct",
     difficulty: "Difficult",
     included: ["Camping", "Meals", "Guide", "Equipment", "Permits"],
+    status: "coming-soon",
   },
   {
     id: "golden-triangle",
@@ -192,6 +200,7 @@ export const travelPackages: TravelPackage[] = [
     ],
     bestTime: "Oct – Mar",
     included: ["Hotels", "Breakfast", "AC Transport", "Guide", "Entry tickets"],
+    status: "coming-soon",
   },
   {
     id: "kerala-backwaters",
@@ -212,6 +221,7 @@ export const travelPackages: TravelPackage[] = [
     ],
     bestTime: "Sep – Mar",
     included: ["Hotels", "Houseboat", "Meals", "Transport", "Guide"],
+    status: "coming-soon",
   },
   {
     id: "ladakh-adventure",
@@ -233,6 +243,7 @@ export const travelPackages: TravelPackage[] = [
     bestTime: "Jun – Sep",
     difficulty: "Moderate",
     included: ["Hotels & Camps", "Meals", "Bike/SUV", "Permits", "Oxygen"],
+    status: "coming-soon",
   },
   {
     id: "chadar-trek",
@@ -254,6 +265,7 @@ export const travelPackages: TravelPackage[] = [
     bestTime: "Jan – Feb",
     difficulty: "Extreme",
     included: ["Camping", "Meals", "Guide", "Equipment", "Permits", "Insurance"],
+    status: "coming-soon",
   },
   {
     id: "rajasthan-royal",
@@ -274,6 +286,7 @@ export const travelPackages: TravelPackage[] = [
     ],
     bestTime: "Oct – Mar",
     included: ["Heritage Hotels", "Breakfast", "AC Transport", "Guide", "Safari"],
+    status: "coming-soon",
   },
 ];
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
+import { Link } from "react-router-dom";
 import {
   MapPin, Clock, Star, IndianRupee, Mountain, ChevronRight,
   Users, CheckCircle2, Search, Sparkles, Flame, Shield,
@@ -7,9 +8,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import { packageCategories, TravelPackage, getTravelPackages } from "@/lib/packages";
+import { resolveImageUrl } from "@/lib/utils";
 
 // ── Category icons map ─────────────────────────────────────────────────────────
 const catMeta: Record<string, { emoji: string; gradient: string; glow: string }> = {
@@ -55,11 +57,12 @@ function AnimatedBg() {
 }
 
 // ── Package Card ───────────────────────────────────────────────────────────────
-function PackageCard({ pkg, index, onClick }: { pkg: TravelPackage; index: number; onClick: () => void }) {
+function PackageCard({ pkg, index }: { pkg: TravelPackage; index: number }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-60px" });
   const diff = pkg.difficulty ? difficultyMeta[pkg.difficulty] : null;
   const DiffIcon = diff?.icon;
+  const isAvailable = pkg.status === "available";
 
   return (
     <motion.div
@@ -68,229 +71,84 @@ function PackageCard({ pkg, index, onClick }: { pkg: TravelPackage; index: numbe
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.45, delay: (index % 6) * 0.07 }}
       whileHover={{ y: -6 }}
-      className="group cursor-pointer"
-      onClick={onClick}
+      className="group"
     >
-      <div className="relative bg-card/80 backdrop-blur-sm border border-border/60 rounded-2xl overflow-hidden hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-400">
-        {/* Image */}
-        <div className="relative h-52 overflow-hidden">
-          <img
-            src={pkg.image}
-            alt={pkg.title}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-            loading="lazy"
-          />
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+      <Link to={`/packages/${pkg.id}`} className="block">
+        <div className="relative bg-card/80 backdrop-blur-sm border border-border/60 rounded-2xl overflow-hidden hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-400">
+          {/* Image */}
+          <div className="relative h-52 overflow-hidden">
+            <img
+              src={resolveImageUrl(pkg.image)}
+              alt={pkg.title}
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              loading="lazy"
+            />
+            {/* Gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-          {/* Top badges */}
-          <div className="absolute top-3 left-3 right-3 flex items-start justify-between">
-            <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-sm text-white border border-white/10`}>
-              {catMeta[pkg.category]?.emoji} {pkg.category}
-            </span>
-            {diff && DiffIcon && (
-              <span className={`flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-lg border backdrop-blur-sm ${diff.color}`}>
-                <DiffIcon className="w-3 h-3" /> {pkg.difficulty}
+            {/* Top badges */}
+            <div className="absolute top-3 left-3 right-3 flex items-start justify-between">
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-sm text-white border border-white/10`}>
+                {catMeta[pkg.category]?.emoji} {pkg.category}
               </span>
-            )}
-          </div>
-
-          {/* Rating pill */}
-          <div className="absolute top-3 right-3 flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-lg border border-white/10">
-            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-            <span className="text-white text-xs font-bold">{pkg.rating}</span>
-          </div>
-
-          {/* Bottom title */}
-          <div className="absolute bottom-0 left-0 right-0 p-4">
-            <h3 className="font-display font-bold text-lg text-white leading-tight">{pkg.title}</h3>
-            <p className="text-white/70 text-xs mt-0.5 line-clamp-1">{pkg.subtitle}</p>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="p-4 space-y-3">
-          {/* Route */}
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span className="line-clamp-1">{pkg.locations.slice(0, 3).join(" → ")}{pkg.locations.length > 3 ? " ..." : ""}</span>
-          </div>
-
-          {/* Meta */}
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-3 text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" /> {pkg.duration}
-              </span>
-              <span className="flex items-center gap-1">
-                <Users className="w-3.5 h-3.5" /> {pkg.reviews}+
-              </span>
+              {diff && DiffIcon && (
+                <span className={`flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-lg border backdrop-blur-sm ${diff.color}`}>
+                  <DiffIcon className="w-3 h-3" /> {pkg.difficulty}
+                </span>
+              )}
             </div>
-            <div className="flex items-center gap-0.5 font-display font-extrabold text-foreground text-base">
-              <IndianRupee className="w-4 h-4" />
-              {pkg.price.toLocaleString("en-IN")}
+
+            {/* Rating pill */}
+            <div className="absolute top-3 right-3 flex items-center gap-1 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-lg border border-white/10">
+              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+              <span className="text-white text-xs font-bold">{pkg.rating}</span>
+            </div>
+
+            {/* Bottom title */}
+            <div className="absolute bottom-0 left-0 right-0 p-4">
+              <h3 className="font-display font-bold text-lg text-white leading-tight">{pkg.title}</h3>
+              <p className="text-white/70 text-xs mt-0.5 line-clamp-1">{pkg.subtitle}</p>
             </div>
           </div>
 
-          {/* CTA */}
-          <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border border-border/60 bg-muted/50 text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-all duration-300">
-            View Details <ChevronRight className="w-4 h-4" />
-          </button>
+          {/* Body */}
+          <div className="p-4 space-y-3">
+            {/* Route */}
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span className="line-clamp-1">{pkg.locations.slice(0, 3).join(" → ")}{pkg.locations.length > 3 ? " ..." : ""}</span>
+            </div>
+
+            {/* Meta */}
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-3 text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" /> {pkg.duration}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Users className="w-3.5 h-3.5" /> {pkg.reviews}+
+                </span>
+              </div>
+              <div className="flex items-center gap-0.5 font-display font-extrabold text-foreground text-base">
+                <IndianRupee className="w-4 h-4" />
+                {pkg.price.toLocaleString("en-IN")}
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border border-border/60 bg-muted/50 text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-all duration-300">
+              {isAvailable ? "Send Enquiry" : "Coming Soon"} <ChevronRight className="w-4 h-4" />
+            </div>
+          </div>
         </div>
-      </div>
+      </Link>
     </motion.div>
-  );
-}
-
-// ── Detail Modal ───────────────────────────────────────────────────────────────
-function DetailModal({ pkg, onClose }: { pkg: TravelPackage; onClose: () => void }) {
-  const [tab, setTab] = useState<"overview" | "highlights" | "included">("overview");
-  const diff = pkg.difficulty ? difficultyMeta[pkg.difficulty] : null;
-
-  return (
-    <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-2xl border-border/60 bg-card/95 backdrop-blur-xl max-h-[90vh] overflow-y-auto">
-      {/* Hero image */}
-      <div className="relative h-64 overflow-hidden">
-        <img src={pkg.image} alt={pkg.title} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
-        <div className="absolute bottom-0 left-0 right-0 p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="font-display text-2xl font-bold text-white">{pkg.title}</h2>
-              <p className="text-white/70 text-sm mt-1">{pkg.subtitle}</p>
-            </div>
-            {diff && (
-              <span className={`shrink-0 flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl border backdrop-blur-sm ${diff.color}`}>
-                {pkg.difficulty}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Stats row */}
-      <div className="grid grid-cols-4 gap-px bg-border/40 border-b border-border/40">
-        {[
-          { icon: Clock,        label: "Duration",  value: pkg.duration },
-          { icon: IndianRupee,  label: "From",      value: `₹${pkg.price.toLocaleString("en-IN")}` },
-          { icon: Star,         label: "Rating",    value: `${pkg.rating} ★` },
-          { icon: Users,        label: "Reviews",   value: `${pkg.reviews}+` },
-        ].map((s) => {
-          const Icon = s.icon;
-          return (
-            <div key={s.label} className="bg-card/80 flex flex-col items-center py-4 gap-1">
-              <Icon className="w-4 h-4 text-primary" />
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</span>
-              <span className="font-display font-bold text-sm text-foreground">{s.value}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Tabs */}
-      <div className="flex border-b border-border/40">
-        {(["overview", "highlights", "included"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`flex-1 py-3 text-sm font-semibold capitalize transition-all relative ${
-              tab === t ? "text-primary" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t}
-            {tab === t && (
-              <motion.div layoutId="tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab content */}
-      <div className="p-6">
-        <AnimatePresence mode="wait">
-          {tab === "overview" && (
-            <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
-              {/* Route */}
-              <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Route</h4>
-                <div className="flex flex-wrap items-center gap-2">
-                  {pkg.locations.map((loc, i) => (
-                    <span key={loc} className="flex items-center gap-1.5">
-                      <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-semibold border border-primary/20">{loc}</span>
-                      {i < pkg.locations.length - 1 && <ArrowRight className="w-3 h-3 text-muted-foreground" />}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              {/* Best time */}
-              <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50 border border-border/40">
-                <Calendar className="w-5 h-5 text-primary shrink-0" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Best time to visit</p>
-                  <p className="font-semibold text-foreground text-sm">{pkg.bestTime}</p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {tab === "highlights" && (
-            <motion.div key="highlights" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
-              {pkg.highlights.map((h, i) => (
-                <motion.div
-                  key={h}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.07 }}
-                  className="flex items-start gap-3 p-3 rounded-xl bg-muted/40 border border-border/30"
-                >
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span className="text-sm text-foreground">{h}</span>
-                </motion.div>
-              ))}
-            </motion.div>
-          )}
-
-          {tab === "included" && (
-            <motion.div key="included" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-wrap gap-2">
-              {pkg.included.map((item, i) => (
-                <motion.span
-                  key={item}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.06 }}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-sm font-medium"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" /> {item}
-                </motion.span>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Footer CTA */}
-      <div className="px-6 pb-6 flex items-center gap-3">
-        <Button className="flex-1 h-12 gap-2 rounded-xl bg-gradient-to-r from-primary to-violet-500 hover:from-primary/90 hover:to-violet-500/90 shadow-lg shadow-primary/25 text-base font-semibold">
-          Book Now <ArrowRight className="w-4 h-4" />
-        </Button>
-        <Button variant="outline" className="h-12 px-5 rounded-xl border-border/60 hover:border-primary/40">
-          Save
-        </Button>
-      </div>
-    </DialogContent>
   );
 }
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function PackagesPage() {
   const [activeCategory, setActiveCategory] = useState("all");
-  const [selectedPkg, setSelectedPkg] = useState<TravelPackage | null>(null);
   const [packages, setPackages] = useState<TravelPackage[]>([]);
   const [search, setSearch] = useState("");
 
@@ -433,7 +291,7 @@ export default function PackagesPage() {
                 className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
               >
                 {filtered.map((pkg, i) => (
-                  <PackageCard key={pkg.id} pkg={pkg} index={i} onClick={() => setSelectedPkg(pkg)} />
+                  <PackageCard key={pkg.id} pkg={pkg} index={i} />
                 ))}
               </motion.div>
             ) : (
@@ -454,24 +312,7 @@ export default function PackagesPage() {
         </div>
       </section>
 
-      {/* ── Detail Modal ── */}
-      <Dialog open={!!selectedPkg} onOpenChange={() => setSelectedPkg(null)}>
-        {selectedPkg && <DetailModal pkg={selectedPkg} onClose={() => setSelectedPkg(null)} />}
-      </Dialog>
-
-      {/* ── Footer ── */}
-      <footer className="border-t border-border/40 py-8 px-4 bg-card/30 backdrop-blur-sm">
-        <div className="container mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Mountain className="w-4 h-4 text-primary" />
-            <span className="font-display font-bold text-foreground">
-              DeshYatra <span className="text-primary">Co.</span>
-            </span>
-          </div>
-          <p>Curated travel experiences across India</p>
-          <p>© 2025 DeshYatra Co.</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

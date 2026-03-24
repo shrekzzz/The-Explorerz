@@ -4,10 +4,10 @@ import { motion } from "framer-motion";
 import { Bookmark, Share2, RefreshCw, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import ItineraryTimeline from "@/components/ItineraryTimeline";
 import BudgetBreakdownCard from "@/components/BudgetBreakdown";
 import HotelRecommendations from "@/components/HotelRecommendations";
-import TripMap from "@/components/TripMap";
 import { TripPlan, Activity } from "@/types/trip";
 import { saveTrip, shareTripUrl } from "@/lib/storage";
 import { toast } from "sonner";
@@ -90,10 +90,9 @@ export default function ResultsPage() {
           </div>
         </div>
 
-        {/* Split View */}
-        <div className="flex flex-col lg:flex-row" style={{ height: "calc(100vh - 140px)" }}>
-          {/* Left: Itinerary */}
-          <div className="lg:w-[45%] overflow-y-auto p-6 space-y-6">
+        {/* Main content */}
+        <div className="flex flex-col" style={{ minHeight: "calc(100vh - 140px)" }}>
+          <div className="w-full overflow-y-auto p-6 space-y-6">
             <ItineraryTimeline
               itinerary={trip.itinerary}
               onActivityClick={setSelectedActivity}
@@ -105,12 +104,15 @@ export default function ResultsPage() {
             <HotelRecommendations hotels={trip.hotels} />
           </div>
 
-          {/* Right: Map */}
-          <div className="lg:w-[55%] h-[400px] lg:h-full border-t lg:border-t-0 lg:border-l border-border">
-            <TripMap trip={trip} selectedActivity={selectedActivity} />
+          <div className="p-6 border-t border-border bg-card/50 rounded-b-3xl">
+            <h2 className="text-lg font-bold text-foreground">Enjoy your curated plan</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Map view is temporarily disabled for users; itinerary and budget details are ready.
+            </p>
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

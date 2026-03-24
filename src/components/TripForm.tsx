@@ -187,7 +187,7 @@ export default function TripForm({ onSubmit, initialData }: Props) {
                 </motion.button>
               </div>
               {/* Quick day presets */}
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[3, 5, 7, 10].map((d) => (
                   <button
                     key={d}
@@ -335,7 +335,7 @@ export default function TripForm({ onSubmit, initialData }: Props) {
             className="w-full h-12 gap-2 text-base rounded-xl bg-gradient-to-r from-primary to-violet-500 hover:from-primary/90 hover:to-violet-500/90 shadow-lg shadow-primary/25 disabled:opacity-40 disabled:shadow-none transition-all"
           >
             {step === 3 ? (
-              <><Sparkles className="w-4 h-4" /> Generate Itinerary</>
+              <><Sparkles className="w-4 h-4" /> Request Itinerary</>
             ) : (
               <>Continue <ArrowRight className="w-4 h-4" /></>
             )}

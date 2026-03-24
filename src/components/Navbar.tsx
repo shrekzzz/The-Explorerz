@@ -8,14 +8,11 @@ export default function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-lg border-b border-border">
       <div className="container mx-auto flex items-center justify-between h-16 px-4">
-        <Link to="/" className="flex items-center gap-2 group">
-          <img src="/logo.png" alt="DeshYatra Co." className="w-20 h-10 rounded-lg object-cover" />
-          <span className="font-display text-xl font-bold text-foreground">
-            DeshYatra<span className="text-primary"> Co.</span>
-          </span>
+        <Link to="/" className="flex items-center">
+          <img src="/logo.png" alt="The Explorerz" className="w-40 h-14 rounded-lg object-cover" />
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <Link to="/packages">
             <Button
               variant={location.pathname === "/packages" ? "default" : "ghost"}
@@ -42,6 +39,7 @@ export default function Navbar() {
               Plan a Trip
             </Button>
           </Link>
+          
         </div>
       </div>
     </nav>

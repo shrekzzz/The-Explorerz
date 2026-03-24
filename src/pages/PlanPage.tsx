@@ -2,7 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import TripForm from "@/components/TripForm";
+import TripSummary from "@/components/TripSummary";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { TripFormData } from "@/types/trip";
 import { generateMockTrip } from "@/lib/tripGenerator";
 import { Plane, MapPin, Sparkles, Calendar, DollarSign, CheckCircle2 } from "lucide-react";
@@ -11,7 +15,7 @@ const loadingSteps = [
   { icon: MapPin,       label: "Analyzing destination",      color: "text-sky-400" },
   { icon: Calendar,     label: "Building day-by-day plan",   color: "text-violet-400" },
   { icon: DollarSign,   label: "Calculating budget",         color: "text-emerald-400" },
-  { icon: Sparkles,     label: "Adding hidden gems",         color: "text-amber-400" },
+  { icon: Sparkles,     label: "Adding special experiences", color: "text-amber-400" },
   { icon: CheckCircle2, label: "Finalizing your itinerary",  color: "text-primary" },
 ];
 
@@ -103,7 +107,7 @@ function LoadingScreen({ destination }: { destination: string }) {
         Crafting your perfect trip
       </motion.h2>
       <p className="text-muted-foreground text-sm mb-8 text-center">
-        AI is planning your adventure to{" "}
+        Planning your adventure to{" "}
         <span className="text-primary font-semibold">{destination}</span>
       </p>
 
@@ -162,6 +166,9 @@ export default function PlanPage() {
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [destination, setDestination] = useState("");
+  const [showSummary, setShowSummary] = useState(false);
+  const [showThankYou, setShowThankYou] = useState(false);
+  const [formData, setFormData] = useState<TripFormData | null>(null);
 
   const initialData: Partial<TripFormData> = {
     destination: searchParams.get("dest") || "",
@@ -170,14 +177,41 @@ export default function PlanPage() {
     interests: searchParams.get("interests")?.split(",").filter(Boolean) || [],
   };
 
-  const handleSubmit = async (data: TripFormData) => {
-    setDestination(data.destination);
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 1600));
-    const trip = generateMockTrip(data);
-    sessionStorage.setItem("current_trip", JSON.stringify(trip));
+  const handleFormSubmit = (data: TripFormData) => {
+    setFormData(data);
+    setShowSummary(true);
+  };
+
+  const handleEdit = () => {
+    setShowSummary(false);
+  };
+
+  const handlePlanAgain = () => {
+    setShowThankYou(false);
+    setFormData(null);
+    setShowSummary(false);
+    setDestination("");
+    navigate("/plan");
+  };
+
+  const handleExplorePackages = () => {
+    setShowThankYou(false);
+    navigate("/packages");
+  };
+
+  const handleSend = async (updatedData: TripFormData) => {
+    setDestination(updatedData.destination);
+    setFormData(updatedData);
+    setShowSummary(false);
     setLoading(false);
-    navigate("/results");
+
+    // send to backend or external store here (not implemented in this scope)
+    // sessionStorage used for debugging/caching only
+    const trip = generateMockTrip(updatedData);
+    sessionStorage.setItem("current_trip", JSON.stringify(trip));
+
+    // show a thank you modal (no results page redirect)
+    setShowThankYou(true);
   };
 
   return (
@@ -205,6 +239,20 @@ export default function PlanPage() {
               >
                 <LoadingScreen destination={destination} />
               </motion.div>
+            ) : showSummary && formData ? (
+              <motion.div
+                key="summary"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="bg-card/70 backdrop-blur-xl border border-border/60 rounded-3xl shadow-2xl shadow-primary/5 overflow-hidden p-8"
+              >
+                <TripSummary
+                  data={formData}
+                  onEdit={handleEdit}
+                  onSend={handleSend}
+                />
+              </motion.div>
             ) : (
               <motion.div
                 key="form"
@@ -222,14 +270,14 @@ export default function PlanPage() {
                     </div>
                     <div>
                       <h1 className="font-display text-2xl font-bold text-foreground">Plan Your Trip</h1>
-                      <p className="text-sm text-muted-foreground">AI-powered itinerary in seconds</p>
+                      <p className="text-sm text-muted-foreground">Create your itinerary instantly</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Form */}
                 <div className="px-8 py-8">
-                  <TripForm onSubmit={handleSubmit} initialData={initialData} />
+                  <TripForm onSubmit={handleFormSubmit} initialData={initialData} />
                 </div>
               </motion.div>
             )}
@@ -239,6 +287,29 @@ export default function PlanPage() {
           <div className="absolute -inset-4 bg-gradient-to-r from-primary/10 via-violet-500/10 to-primary/10 rounded-3xl blur-2xl -z-10" />
         </div>
       </section>
+
+      <Dialog open={showThankYou} onOpenChange={setShowThankYou}>
+        <DialogContent className="max-w-md p-6">
+          <DialogHeader>
+            <DialogTitle>Thank you for enquiring!</DialogTitle>
+            <DialogDescription>
+              Your trip request has been received. Our team will contact you shortly with a tailored itinerary.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-2">
+            <p className="text-sm text-foreground">What would you like to do next?</p>
+          </div>
+          <DialogFooter className="mt-4 gap-2">
+            <Button variant="outline" onClick={handlePlanAgain} className="flex-1">
+              Plan New Trip
+            </Button>
+            <Button onClick={handleExplorePackages} className="flex-1">
+              Explore Packages
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Footer />
     </div>
   );
 }
