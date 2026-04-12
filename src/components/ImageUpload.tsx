@@ -86,14 +86,9 @@ export default function ImageUpload({ value, onChange, label = "Image" }: ImageU
     fileInputRef.current?.click();
   };
 
-  // Load preview from localStorage if value exists
+  // Set preview from server-returned file path / URL
   React.useEffect(() => {
-    if (value && value.startsWith('uploaded-image-')) {
-      const storedImage = localStorage.getItem(value);
-      if (storedImage) {
-        setPreview(storedImage);
-      }
-    } else if (value) {
+    if (value) {
       setPreview(value);
     }
   }, [value]);
@@ -156,7 +151,7 @@ export default function ImageUpload({ value, onChange, label = "Image" }: ImageU
         </Label>
         <Input
           id="image-url"
-          value={value.startsWith('uploaded-image-') ? '' : value}
+          value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="https://example.com/image.jpg or /local-image.jpg"
         />
