@@ -1,5 +1,23 @@
 import { emailTransport, emailDefaults } from '../config/email.js';
 import logger from '../utils/logger.js';
+import { sanitizePlainText, escapeHtml } from '../utils/sanitize.js';
+import { Queue, Worker } from 'bullmq';
+import redis from '../config/redis.js';
+
+// ─── Email Queue Setup ──────────────────
+
+export const emailQueue = new Queue('emails', {
+  connection: redis as any,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 2000,
+    },
+    removeOnComplete: 100,
+    removeOnFail: 50,
+  },
+});
 
 // ─── Email Templates ────────────────────
 
@@ -8,6 +26,11 @@ interface EmailOptions {
   subject: string;
   html: string;
   text?: string;
+}
+
+interface EmailJobData {
+  type: 'welcome' | 'booking-confirmation' | 'email-verification' | 'password-reset';
+  data: any;
 }
 
 /**
@@ -33,6 +56,9 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
 // ─── Template Functions ─────────────────
 
 export async function sendWelcomeEmail(email: string, firstName: string): Promise<void> {
+  // Sanitize user input to prevent XSS in emails
+  const safeName = escapeHtml(sanitizePlainText(firstName));
+  
   await sendEmail({
     to: email,
     subject: 'Welcome to DeshYatra! 🌍',
@@ -43,7 +69,7 @@ export async function sendWelcomeEmail(email: string, firstName: string): Promis
           <p style="color: rgba(255,255,255,0.9); margin-top: 8px;">Your journey begins here</p>
         </div>
         <div style="padding: 30px;">
-          <p style="color: #374151; font-size: 16px;">Hi ${firstName},</p>
+          <p style="color: #374151; font-size: 16px;">Hi ${safeName},</p>
           <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
             Thank you for joining DeshYatra — your ultimate travel companion for exploring
             the beauty of India. Start planning your next adventure today!
@@ -76,22 +102,27 @@ export async function sendBookingConfirmationEmail(
   travelers: number,
   totalAmount: number
 ): Promise<void> {
+  // Sanitize all user inputs
+  const safeName = escapeHtml(sanitizePlainText(firstName));
+  const safePackageTitle = escapeHtml(sanitizePlainText(packageTitle));
+  const safeTravelDate = escapeHtml(sanitizePlainText(travelDate));
+  
   await sendEmail({
     to: email,
-    subject: `Booking Confirmed — ${packageTitle} ✅`,
+    subject: `Booking Confirmed — ${safePackageTitle} ✅`,
     html: `
       <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; background: #f9fafb; border-radius: 12px; overflow: hidden;">
         <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 30px; text-align: center;">
           <h1 style="color: white; margin: 0; font-size: 28px;">Booking Confirmed! ✅</h1>
         </div>
         <div style="padding: 30px;">
-          <p style="color: #374151; font-size: 16px;">Hi ${firstName},</p>
+          <p style="color: #374151; font-size: 16px;">Hi ${safeName},</p>
           <p style="color: #6b7280; font-size: 14px;">Your booking has been confirmed.</p>
           <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
             <table style="width: 100%; border-collapse: collapse;">
               <tr><td style="padding: 8px 0; color: #6b7280;">Booking ID</td><td style="padding: 8px 0; font-weight: 600;">${bookingId.slice(0, 8).toUpperCase()}</td></tr>
-              <tr><td style="padding: 8px 0; color: #6b7280;">Package</td><td style="padding: 8px 0; font-weight: 600;">${packageTitle}</td></tr>
-              <tr><td style="padding: 8px 0; color: #6b7280;">Travel Date</td><td style="padding: 8px 0; font-weight: 600;">${travelDate}</td></tr>
+              <tr><td style="padding: 8px 0; color: #6b7280;">Package</td><td style="padding: 8px 0; font-weight: 600;">${safePackageTitle}</td></tr>
+              <tr><td style="padding: 8px 0; color: #6b7280;">Travel Date</td><td style="padding: 8px 0; font-weight: 600;">${safeTravelDate}</td></tr>
               <tr><td style="padding: 8px 0; color: #6b7280;">Travelers</td><td style="padding: 8px 0; font-weight: 600;">${travelers}</td></tr>
               <tr><td style="padding: 8px 0; color: #6b7280;">Total Amount</td><td style="padding: 8px 0; font-weight: 600; color: #059669;">₹${totalAmount.toLocaleString('en-IN')}</td></tr>
             </table>
@@ -139,4 +170,125 @@ export async function sendPasswordResetEmail(email: string, resetToken: string):
     `,
     text: `Reset your password at: ${resetUrl}. If you didn't request this, ignore this email.`,
   });
+}
+
+export async function sendEmailVerification(
+  email: string,
+  firstName: string,
+  verificationToken: string
+): Promise<void> {
+  // Sanitize user input
+  const safeName = escapeHtml(sanitizePlainText(firstName));
+  
+  const verificationUrl = `${process.env.CORS_ORIGINS?.split(',')[0] || 'http://localhost:5173'}/verify-email?token=${verificationToken}`;
+
+  await sendEmail({
+    to: email,
+    subject: 'Verify Your Email — DeshYatra',
+    html: `
+      <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; background: #f9fafb; border-radius: 12px; overflow: hidden;">
+        <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 40px 30px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">Verify Your Email</h1>
+        </div>
+        <div style="padding: 30px;">
+          <p style="color: #374151; font-size: 16px;">Hi ${safeName},</p>
+          <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
+            Thank you for registering with DeshYatra! Please verify your email address to
+            unlock all features and start planning your trips.
+          </p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${verificationUrl}"
+               style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 12px 32px;
+                      border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+              Verify Email Address
+            </a>
+          </div>
+          <p style="color: #9ca3af; font-size: 12px;">
+            This link will expire in 24 hours. If you didn't create an account, you can safely ignore this email.
+          </p>
+        </div>
+        <div style="padding: 20px 30px; background: #f3f4f6; text-align: center;">
+          <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+            &copy; ${new Date().getFullYear()} DeshYatra. All rights reserved.
+          </p>
+        </div>
+      </div>
+    `,
+    text: `Hi ${firstName}, verify your email at: ${verificationUrl}. This link expires in 24 hours.`,
+  });
+}
+
+// ─── Email Queue Functions ──────────────
+
+/**
+ * Queue an email for asynchronous sending with retry logic
+ */
+export async function queueEmail(type: EmailJobData['type'], data: any): Promise<void> {
+  try {
+    await emailQueue.add(type, { type, data });
+    logger.info({ type, recipient: data.email }, 'Email queued');
+  } catch (err) {
+    logger.error({ err, type }, 'Failed to queue email');
+    throw err;
+  }
+}
+
+/**
+ * Initialize email worker to process queued emails
+ */
+export function initEmailWorker(): Worker {
+  const worker = new Worker(
+    'emails',
+    async (job) => {
+      const { type, data } = job.data as EmailJobData;
+      
+      logger.info({ type, jobId: job.id }, 'Processing email job');
+      
+      try {
+        switch (type) {
+          case 'welcome':
+            await sendWelcomeEmail(data.email, data.firstName);
+            break;
+          case 'booking-confirmation':
+            await sendBookingConfirmationEmail(
+              data.email,
+              data.firstName,
+              data.packageTitle,
+              data.bookingId,
+              data.travelDate,
+              data.travelers,
+              data.totalAmount
+            );
+            break;
+          case 'email-verification':
+            await sendEmailVerification(data.email, data.firstName, data.verificationToken);
+            break;
+          case 'password-reset':
+            await sendPasswordResetEmail(data.email, data.resetToken);
+            break;
+          default:
+            throw new Error(`Unknown email type: ${type}`);
+        }
+        
+        logger.info({ type, jobId: job.id }, 'Email job completed');
+      } catch (err) {
+        logger.error({ err, type, jobId: job.id }, 'Email job failed');
+        throw err;
+      }
+    },
+    {
+      connection: redis as any,
+      concurrency: 5,
+    }
+  );
+
+  worker.on('completed', (job) => {
+    logger.info({ jobId: job.id }, 'Email worker: job completed');
+  });
+
+  worker.on('failed', (job, err) => {
+    logger.error({ jobId: job?.id, err }, 'Email worker: job failed');
+  });
+
+  return worker;
 }

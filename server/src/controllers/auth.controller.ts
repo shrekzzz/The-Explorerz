@@ -1,145 +1,43 @@
 import { Request, Response, NextFunction } from 'express';
-import * as authService from '../services/auth.service.js';
+import { Webhook } from 'svix';
+import { syncClerkUser, deleteClerkUser, getUserByClerkId } from '../services/auth.service.js';
 import { logAuditEvent } from '../services/audit.service.js';
-import { sendWelcomeEmail } from '../services/email.service.js';
+import { env } from '../config/env.js';
+import logger from '../utils/logger.js';
 
-export async function register(req: Request, res: Response, next: NextFunction) {
+// ─── GET /api/auth/me ───────────────────
+// Returns the local DB user record for the authenticated Clerk user.
+
+export async function getMe(req: Request, res: Response, next: NextFunction) {
   try {
-    const result = await authService.registerUser(
-      req.body,
-      req.ip || null,
-      req.headers['user-agent'] || null
-    );
-
-    // Set refresh token as HTTP-only secure cookie
-    setRefreshTokenCookie(res, result.tokens.refreshToken);
-
-    // Send welcome email (fire-and-forget)
-    sendWelcomeEmail(result.user.email, result.user.firstName).catch(() => {});
-
-    // Audit log
-    await logAuditEvent(result.user.id, 'USER_REGISTER', 'user', result.user.id, {}, req.ip);
-
-    res.status(201).json({
-      success: true,
-      data: {
-        user: result.user,
-        accessToken: result.tokens.accessToken,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-}
-
-export async function login(req: Request, res: Response, next: NextFunction) {
-  try {
-    const result = await authService.loginUser(
-      req.body,
-      req.ip || null,
-      req.headers['user-agent'] || null
-    );
-
-    setRefreshTokenCookie(res, result.tokens.refreshToken);
-
-    await logAuditEvent(result.user.id, 'USER_LOGIN', 'user', result.user.id, {}, req.ip);
-
-    res.json({
-      success: true,
-      data: {
-        user: result.user,
-        accessToken: result.tokens.accessToken,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-}
-
-export async function refreshToken(req: Request, res: Response, next: NextFunction) {
-  try {
-    const token = req.cookies?.refreshToken;
-    if (!token) {
+    if (!req.user?.userId) {
       res.status(401).json({
         success: false,
-        error: { code: 'NO_REFRESH_TOKEN', message: 'No refresh token provided' },
+        error: { code: 'UNAUTHORIZED', message: 'Authentication required' },
       });
       return;
     }
 
-    const tokens = await authService.refreshTokens(
-      token,
-      req.ip || null,
-      req.headers['user-agent'] || null
-    );
+    // req.user.clerkId is the Clerk user ID (set by auth middleware)
+    const user = await getUserByClerkId(req.user.clerkId);
 
-    setRefreshTokenCookie(res, tokens.refreshToken);
-
-    res.json({
-      success: true,
-      data: { accessToken: tokens.accessToken },
-    });
-  } catch (err) {
-    next(err);
-  }
-}
-
-export async function logout(req: Request, res: Response, next: NextFunction) {
-  try {
-    const token = req.cookies?.refreshToken;
-    if (token) {
-      await authService.logoutUser(token);
+    if (!user) {
+      // User exists in Clerk but not yet synced to local DB.
+      // This can happen if the webhook hasn't fired yet.
+      res.status(404).json({
+        success: false,
+        error: { code: 'USER_NOT_SYNCED', message: 'User not found in database. Please wait for account sync.' },
+      });
+      return;
     }
 
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/api/auth',
-    });
-
-    res.json({ success: true, message: 'Logged out successfully' });
-  } catch (err) {
-    next(err);
-  }
-}
-
-export async function logoutAll(req: Request, res: Response, next: NextFunction) {
-  try {
-    if (req.user?.userId) {
-      await authService.logoutAllSessions(req.user.userId);
+    if (!user.isActive) {
+      res.status(403).json({
+        success: false,
+        error: { code: 'ACCOUNT_DEACTIVATED', message: 'Account has been deactivated' },
+      });
+      return;
     }
-
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/api/auth',
-    });
-
-    res.json({ success: true, message: 'Logged out from all devices' });
-  } catch (err) {
-    next(err);
-  }
-}
-
-export async function getMe(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { default: prisma } = await import('../config/database.js');
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.userId },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        avatarUrl: true,
-        isEmailVerified: true,
-        phone: true,
-        createdAt: true,
-      },
-    });
 
     res.json({ success: true, data: user });
   } catch (err) {
@@ -147,14 +45,77 @@ export async function getMe(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-// ─── Helpers ────────────────────────────
+// ─── POST /api/auth/webhook ─────────────
+// Receives Clerk webhook events (user.created, user.updated, user.deleted).
+// Verifies the Svix signature before processing.
 
-function setRefreshTokenCookie(res: Response, token: string) {
-  res.cookie('refreshToken', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    path: '/api/auth',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  });
+export async function clerkWebhook(req: Request, res: Response, next: NextFunction) {
+  try {
+    const webhookSecret = env.CLERK_WEBHOOK_SECRET;
+
+    if (!webhookSecret) {
+      logger.error('CLERK_WEBHOOK_SECRET is not set — rejecting webhook');
+      res.status(500).json({ error: 'Webhook secret not configured' });
+      return;
+    }
+
+    // Svix headers required for verification
+    const svixId = req.headers['svix-id'] as string;
+    const svixTimestamp = req.headers['svix-timestamp'] as string;
+    const svixSignature = req.headers['svix-signature'] as string;
+
+    if (!svixId || !svixTimestamp || !svixSignature) {
+      logger.warn('Missing Svix headers on webhook request');
+      res.status(400).json({ error: 'Missing webhook verification headers' });
+      return;
+    }
+
+    // Verify the webhook signature using Svix
+    const wh = new Webhook(webhookSecret);
+    let event: any;
+
+    try {
+      // req.body must be the raw string/buffer for Svix to verify correctly
+      const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+      event = wh.verify(rawBody, {
+        'svix-id': svixId,
+        'svix-timestamp': svixTimestamp,
+        'svix-signature': svixSignature,
+      });
+    } catch (err) {
+      logger.warn({ err }, 'Webhook signature verification failed');
+      res.status(401).json({ error: 'Invalid webhook signature' });
+      return;
+    }
+
+    // Process the verified event
+    const eventType = event.type as string;
+    const eventData = event.data;
+
+    logger.info({ eventType, clerkId: eventData?.id }, 'Clerk webhook received');
+
+    switch (eventType) {
+      case 'user.created':
+        await syncClerkUser(eventData);
+        await logAuditEvent(null, 'USER_REGISTER', 'user', null, { clerkId: eventData.id }, req.ip);
+        break;
+
+      case 'user.updated':
+        await syncClerkUser(eventData);
+        await logAuditEvent(null, 'USER_UPDATED', 'user', null, { clerkId: eventData.id }, req.ip);
+        break;
+
+      case 'user.deleted':
+        await deleteClerkUser(eventData.id);
+        await logAuditEvent(null, 'USER_DELETED', 'user', null, { clerkId: eventData.id }, req.ip);
+        break;
+
+      default:
+        logger.debug({ eventType }, 'Unhandled Clerk webhook event');
+    }
+
+    res.status(200).json({ received: true });
+  } catch (err) {
+    next(err);
+  }
 }

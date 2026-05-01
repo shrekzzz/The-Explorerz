@@ -1,17 +1,18 @@
 import { Router } from 'express';
-import { register, login, refreshToken, logout, logoutAll, getMe } from '../controllers/auth.controller.js';
-import { validateBody } from '../middleware/validate.js';
-import { registerSchema, loginSchema } from '../validators/auth.schema.js';
-import { loginLimiter, registerLimiter } from '../middleware/rateLimiter.js';
+import { getMe, clerkWebhook } from '../controllers/auth.controller.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
 
-router.post('/register', registerLimiter, validateBody(registerSchema), register);
-router.post('/login', loginLimiter, validateBody(loginSchema), login);
-router.post('/refresh', refreshToken);
-router.post('/logout', logout);
-router.post('/logout-all', authenticate, logoutAll);
+// ─── Clerk-managed auth ─────────────────
+// Registration, login, logout, password reset, and email verification
+// are all handled by Clerk's hosted UI. The backend only needs:
+
+// 1. Get current user's local DB record (requires Clerk session)
 router.get('/me', authenticate, getMe);
+
+// 2. Clerk webhook — syncs user data to local DB
+//    Raw body parsing is configured in app.ts for this route
+router.post('/webhook', clerkWebhook);
 
 export default router;

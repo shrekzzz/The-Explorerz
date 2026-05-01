@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { createPaymentOrder, verifyPayment, refundPayment } from '../services/payment.service.js';
 import { logAuditEvent } from '../services/audit.service.js';
+import { paramId } from '../utils/params.js';
 
 export async function initiatePayment(req: Request, res: Response, next: NextFunction) {
   try {
@@ -39,7 +40,7 @@ export async function verifyPaymentHandler(req: Request, res: Response, next: Ne
 
 export async function handleRefund(req: Request, res: Response, next: NextFunction) {
   try {
-    const { bookingId } = req.params;
+    const bookingId = paramId(req, 'bookingId');
 
     await refundPayment(bookingId);
 

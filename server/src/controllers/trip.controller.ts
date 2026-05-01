@@ -3,6 +3,7 @@ import prisma from '../config/database.js';
 import { NotFoundError, ForbiddenError } from '../utils/errors.js';
 import { generateShareToken } from '../utils/crypto.js';
 import { CreateTripInput, TripQuery } from '../validators/trip.schema.js';
+import { paramId } from '../utils/params.js';
 
 export async function listTrips(req: Request, res: Response, next: NextFunction) {
   try {
@@ -38,7 +39,7 @@ export async function listTrips(req: Request, res: Response, next: NextFunction)
 export async function getTrip(req: Request, res: Response, next: NextFunction) {
   try {
     const trip = await prisma.trip.findUnique({
-      where: { id: req.params.id },
+      where: { id: paramId(req, 'id') },
       include: {
         itinerary: {
           include: { activities: true },
@@ -64,7 +65,7 @@ export async function getTrip(req: Request, res: Response, next: NextFunction) {
 export async function getSharedTrip(req: Request, res: Response, next: NextFunction) {
   try {
     const trip = await prisma.trip.findUnique({
-      where: { shareToken: req.params.token },
+      where: { shareToken: paramId(req, 'token') },
       include: {
         itinerary: {
           include: { activities: true },
@@ -138,7 +139,7 @@ export async function createTrip(req: Request, res: Response, next: NextFunction
 
 export async function deleteTrip(req: Request, res: Response, next: NextFunction) {
   try {
-    const trip = await prisma.trip.findUnique({ where: { id: req.params.id } });
+    const trip = await prisma.trip.findUnique({ where: { id: paramId(req, 'id') } });
     if (!trip) throw new NotFoundError('Trip not found');
 
     // Only owner or admin can delete
@@ -146,9 +147,44 @@ export async function deleteTrip(req: Request, res: Response, next: NextFunction
       throw new ForbiddenError('You can only delete your own trips');
     }
 
-    await prisma.trip.delete({ where: { id: req.params.id } });
+    await prisma.trip.delete({ where: { id: paramId(req, 'id') } });
     res.json({ success: true, message: 'Trip deleted' });
   } catch (err) {
     next(err);
   }
 }
+
+export async function updateTrip(req: Request, res: Response, next: NextFunction) {
+  try {
+    const trip = await prisma.trip.findUnique({ where: { id: paramId(req, 'id') } });
+    if (!trip) throw new NotFoundError('Trip not found');
+
+    // Only owner can update
+    if (trip.userId !== req.user?.userId) {
+      throw new ForbiddenError('You can only update your own trips');
+    }
+
+    const { isPublic } = req.body;
+
+    const updateData: any = {};
+    if (typeof isPublic === 'boolean') {
+      updateData.isPublic = isPublic;
+      // Generate share token when making public, remove when making private
+      updateData.shareToken = isPublic ? generateShareToken() : null;
+    }
+
+    const updated = await prisma.trip.update({
+      where: { id: paramId(req, 'id') },
+      data: updateData,
+      include: {
+        itinerary: { include: { activities: true } },
+        hotels: true,
+      },
+    });
+
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+}
+

@@ -99,3 +99,64 @@ export const uploadLimiter = rateLimit({
     },
   },
 });
+
+/**
+ * Token refresh limiter — 10 per minute.
+ * Prevents abuse of token refresh endpoint (DoS vector).
+ */
+export const refreshLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: {
+      code: 'REFRESH_RATE_LIMIT',
+      message: 'Too many refresh requests. Please try again later.',
+    },
+  },
+  keyGenerator: (req) => {
+    // Rate limit by IP + user ID if available
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.ip || 'unknown';
+    const userId = (req as any).user?.userId || '';
+    return userId ? `${ip}:${userId}` : ip;
+  },
+});
+
+/**
+ * Email verification limiter — 5 per hour.
+ * Prevents spam of verification emails.
+ */
+export const emailVerificationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: {
+      code: 'EMAIL_VERIFICATION_RATE_LIMIT',
+      message: 'Too many verification email requests. Please check your inbox or try again later.',
+    },
+  },
+});
+
+/**
+ * Booking creation limiter — 5 per hour.
+ * Prevents spam bookings.
+ */
+export const bookingLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: {
+      code: 'BOOKING_RATE_LIMIT',
+      message: 'Too many booking requests. Please try again later.',
+    },
+  },
+});

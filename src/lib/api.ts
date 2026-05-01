@@ -1,53 +1,70 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { generateIdempotencyKey } from './idempotency';
 
 // ─── API Client ─────────────────────────
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export const api = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
+  baseURL: `${API_BASE_URL}/api/v1`, // ✅ Updated to use v1 versioning
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // Send cookies (refresh token)
+  withCredentials: true,
 });
 
 // ─── Token Management ───────────────────
 
-let accessToken: string | null = null;
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (error: any) => void;
-}> = [];
+let getTokenFunction: (() => Promise<string | null>) | null = null;
 
-export function setAccessToken(token: string | null) {
-  accessToken = token;
-}
-
-export function getAccessToken(): string | null {
-  return accessToken;
-}
-
-function processQueue(error: any, token: string | null = null) {
-  failedQueue.forEach((promise) => {
-    if (error) {
-      promise.reject(error);
-    } else {
-      promise.resolve(token!);
-    }
-  });
-  failedQueue = [];
+export function setGetTokenFunction(fn: () => Promise<string | null>) {
+  getTokenFunction = fn;
 }
 
 // ─── Request Interceptor ────────────────
-// Automatically attach access token to every request
+// Automatically attach Clerk token to every request
+// Add idempotency keys for critical operations
 
 api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    if (accessToken && config.headers) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+  async (config: InternalAxiosRequestConfig) => {
+    if (config.headers) {
+      // Attach auth token
+      if (getTokenFunction) {
+        try {
+          const token = await getTokenFunction();
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+          }
+        } catch (error) {
+          console.error('Failed to get auth token:', error);
+        }
+      }
+
+      // Add idempotency key for critical operations
+      const method = config.method?.toUpperCase();
+      const url = config.url || '';
+      
+      // Critical endpoints that need idempotency
+      const criticalEndpoints = [
+        '/bookings',
+        '/payments/initiate',
+        '/payments/verify',
+        '/bookings/.*/cancel',
+        '/payments/refund',
+      ];
+
+      const isCritical = criticalEndpoints.some(endpoint => 
+        new RegExp(endpoint).test(url)
+      );
+
+      // Add idempotency key for POST/PUT/PATCH/DELETE on critical endpoints
+      if (isCritical && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method || '')) {
+        // Check if idempotency key already provided
+        if (!config.headers['Idempotency-Key']) {
+          config.headers['Idempotency-Key'] = generateIdempotencyKey();
+        }
+      }
     }
     return config;
   },
@@ -55,59 +72,15 @@ api.interceptors.request.use(
 );
 
 // ─── Response Interceptor ───────────────
-// Handle 401 errors by refreshing the token
+// Handle 401 errors
 
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-
-    // If 401 and not a refresh/login request, try refreshing
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !originalRequest.url?.includes('/auth/login') &&
-      !originalRequest.url?.includes('/auth/refresh') &&
-      !originalRequest.url?.includes('/auth/register')
-    ) {
-      if (isRefreshing) {
-        // Queue additional requests while refreshing
-        return new Promise<string>((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-            }
-            return api(originalRequest);
-          })
-          .catch((err) => Promise.reject(err));
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const { data } = await api.post('/auth/refresh');
-        const newToken = data.data.accessToken;
-        setAccessToken(newToken);
-        processQueue(null, newToken);
-
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        }
-        return api(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        setAccessToken(null);
-        // Redirect to login on refresh failure
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
-      }
+    if (error.response?.status === 401) {
+      // Clerk will handle re-authentication via its UI
+      console.warn('Unauthorized request - user may need to sign in again');
     }
-
     return Promise.reject(error);
   }
 );

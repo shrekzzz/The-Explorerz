@@ -10,11 +10,14 @@ const envSchema = z.object({
   // Redis
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
-  // JWT
-  JWT_ACCESS_SECRET: z.string().min(32),
-  JWT_REFRESH_SECRET: z.string().min(32),
-  JWT_ACCESS_EXPIRY: z.string().default('15m'),
-  JWT_REFRESH_EXPIRY: z.string().default('7d'),
+  // Clerk Authentication
+  CLERK_PUBLISHABLE_KEY: z.string().startsWith('pk_'),
+  CLERK_SECRET_KEY: z.string().startsWith('sk_'),
+  CLERK_WEBHOOK_SECRET: z.string().optional(),
+
+  // Razorpay Payment Gateway
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
 
   // Cloudinary
   CLOUDINARY_CLOUD_NAME: z.string().min(1),

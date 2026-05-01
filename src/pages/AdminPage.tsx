@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Edit, Trash2, Plus, MapPin, Clock, Star, IndianRupee } from "lucide-react";
+import { Edit, Trash2, Plus, MapPin, Clock, Star, IndianRupee, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -10,10 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
 import ImageUpload from "@/components/ImageUpload";
-import { TravelPackage, getTravelPackages } from "@/lib/packages";
-import { savePackage, deletePackage } from "@/lib/storage";
+import { TravelPackage } from "@/lib/packages";
+import { getPackages, savePackage, deletePackage } from "@/lib/storage";
 
 const difficultyOptions = ["Easy", "Moderate", "Difficult", "Extreme"];
 
@@ -22,10 +23,29 @@ export default function AdminPage() {
   const [editingPackage, setEditingPackage] = useState<TravelPackage | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
-    setPackages(getTravelPackages());
+    loadPackages();
   }, []);
+
+  const loadPackages = async () => {
+    try {
+      setIsLoading(true);
+      const data = await getPackages();
+      setPackages(data);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load packages",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleEdit = (pkg: TravelPackage) => {
     setEditingPackage({ ...pkg });
@@ -53,19 +73,46 @@ export default function AdminPage() {
     setIsAddDialogOpen(true);
   };
 
-  const handleSave = () => {
-    if (editingPackage) {
-      savePackage(editingPackage);
-      setPackages(getTravelPackages());
+  const handleSave = async () => {
+    if (!editingPackage) return;
+
+    try {
+      setIsSaving(true);
+      await savePackage(editingPackage);
+      await loadPackages();
       setIsEditDialogOpen(false);
       setIsAddDialogOpen(false);
       setEditingPackage(null);
+      toast({
+        title: "Success",
+        description: "Package saved successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save package",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleDelete = (id: string) => {
-    deletePackage(id);
-    setPackages(getTravelPackages());
+  const handleDelete = async (id: string) => {
+    try {
+      await deletePackage(id);
+      await loadPackages();
+      toast({
+        title: "Success",
+        description: "Package deleted successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete package",
+        variant: "destructive",
+      });
+    }
   };
 
   const updateEditingPackage = (field: keyof TravelPackage, value: any) => {
@@ -92,14 +139,25 @@ export default function AdminPage() {
             <h1 className="text-3xl font-bold">Admin Panel - Packages</h1>
             <p className="text-muted-foreground">Manage travel packages</p>
           </div>
-          <Button onClick={handleAdd} className="gap-2">
+          <Button onClick={handleAdd} className="gap-2" disabled={isLoading}>
             <Plus className="w-4 h-4" />
             Add Package
           </Button>
         </div>
 
-        <div className="grid gap-6">
-          {packages.map((pkg) => (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : packages.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-muted-foreground">No packages found. Create your first package!</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-6">
+            {packages.map((pkg) => (
             <Card key={pkg.id}>
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -172,7 +230,8 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           ))}
-        </div>
+          </div>
+        )}
 
         {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -330,10 +389,19 @@ export default function AdminPage() {
                   />
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                  <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSaving}>
                     Cancel
                   </Button>
-                  <Button onClick={handleSave}>Save</Button>
+                  <Button onClick={handleSave} disabled={isSaving}>
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save'
+                    )}
+                  </Button>
                 </div>
               </div>
             )}
@@ -496,10 +564,19 @@ export default function AdminPage() {
                   />
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isSaving}>
                     Cancel
                   </Button>
-                  <Button onClick={handleSave}>Add Package</Button>
+                  <Button onClick={handleSave} disabled={isSaving}>
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Adding...
+                      </>
+                    ) : (
+                      'Add Package'
+                    )}
+                  </Button>
                 </div>
               </div>
             )}

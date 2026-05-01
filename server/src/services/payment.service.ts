@@ -88,7 +88,10 @@ export async function verifyPayment(
     .update(body)
     .digest('hex');
 
-  const isValid = expectedSignature === razorpaySignature;
+  const isValid = crypto.timingSafeEqual(
+    Buffer.from(expectedSignature, 'hex'),
+    Buffer.from(razorpaySignature, 'hex')
+  );
 
   if (isValid) {
     await prisma.booking.update({

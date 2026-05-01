@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../config/database.js';
 import { logger } from '../utils/logger.js';
+import { paramId } from '../utils/params.js';
 
 interface AuditData {
   action: string;
@@ -25,7 +26,7 @@ export function auditLog(data: AuditData) {
               userId: req.user?.userId || null,
               action: data.action,
               resource: data.resource,
-              resourceId: data.resourceId || req.params.id || null,
+              resourceId: data.resourceId || paramId(req, 'id') || null,
               metadata: {
                 ...data.metadata,
                 method: req.method,

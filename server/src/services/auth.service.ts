@@ -1,36 +1,25 @@
-import argon2 from 'argon2';
 import prisma from '../config/database.js';
-import redis from '../config/redis.js';
-import {
-  generateAccessToken,
-  generateRefreshToken,
-  verifyRefreshToken,
-  parseDuration,
-} from '../utils/jwt.js';
-import { generateSecureToken } from '../utils/crypto.js';
-import {
-  UnauthorizedError,
-  ConflictError,
-  NotFoundError,
-  BadRequestError,
-  ForbiddenError,
-} from '../utils/errors.js';
-import { getPermissionsForRole } from '../middleware/rbac.js';
-import { env } from '../config/env.js';
-import { RegisterInput, LoginInput } from '../validators/auth.schema.js';
-import { isAccountLocked, recordFailedLogin, clearFailedLogins, getLockoutTTL } from './account.service.js';
-import { sendVerificationEmail } from './account.service.js';
 import logger from '../utils/logger.js';
+import { queueEmail } from './email.service.js';
 
 // ─── Types ──────────────────────────────
 
-interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
+interface ClerkUserData {
+  id: string;           // Clerk user ID (e.g. "user_xxx")
+  email_addresses: Array<{
+    email_address: string;
+    id: string;
+  }>;
+  first_name: string | null;
+  last_name: string | null;
+  phone_numbers?: Array<{ phone_number: string }>;
+  image_url?: string | null;
+  public_metadata?: Record<string, unknown>;
 }
 
 interface UserResponse {
   id: string;
+  clerkId: string | null;
   email: string;
   firstName: string;
   lastName: string;
@@ -39,227 +28,129 @@ interface UserResponse {
   isEmailVerified: boolean;
 }
 
-// ─── Register ───────────────────────────
+// ─── Sync from Clerk Webhook ────────────
 
-export async function registerUser(
-  data: RegisterInput,
-  ipAddress: string | null,
-  userAgent: string | null
-): Promise<{ user: UserResponse; tokens: AuthTokens }> {
-  // Check if email already exists
-  const existing = await prisma.user.findUnique({
-    where: { email: data.email.toLowerCase() },
-  });
-
-  if (existing) {
-    throw new ConflictError('An account with this email already exists');
+/**
+ * Upsert a local user record when Clerk fires `user.created` or `user.updated`.
+ * If a user with the same email already exists (legacy pre-Clerk accounts),
+ * link them by setting clerkId.
+ */
+export async function syncClerkUser(data: ClerkUserData): Promise<UserResponse> {
+  const email = data.email_addresses[0]?.email_address?.toLowerCase();
+  if (!email) {
+    throw new Error('Clerk user has no email address');
   }
 
-  // Hash password with Argon2id
-  const passwordHash = await argon2.hash(data.password, {
-    type: argon2.argon2id,
-    memoryCost: 65536,   // 64 MB
-    timeCost: 3,
-    parallelism: 4,
-  });
+  const role = (data.public_metadata?.role as string) || 'USER';
 
-  // Create user
-  const user = await prisma.user.create({
-    data: {
-      email: data.email.toLowerCase(),
-      passwordHash,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      phone: data.phone,
+  // Try to find by clerkId first, then by email (for legacy migration)
+  const existing = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { clerkId: data.id },
+        { email },
+      ],
     },
   });
 
-  // Generate tokens
-  const tokens = await createSession(user.id, user.role, ipAddress, userAgent);
+  if (existing) {
+    // Update existing user
+    const updated = await prisma.user.update({
+      where: { id: existing.id },
+      data: {
+        clerkId: data.id,
+        email,
+        firstName: data.first_name || existing.firstName,
+        lastName: data.last_name || existing.lastName,
+        phone: data.phone_numbers?.[0]?.phone_number || existing.phone,
+        avatarUrl: data.image_url || existing.avatarUrl,
+        isEmailVerified: true,  // Clerk handles email verification
+        lastLoginAt: new Date(),
+      },
+    });
 
-  // Send verification email (fire-and-forget)
-  sendVerificationEmail(user.id, user.email, user.firstName).catch(() => {});
-
-  logger.info({ userId: user.id }, 'User registered');
-
-  return {
-    user: formatUser(user),
-    tokens,
-  };
-}
-
-// ─── Login ──────────────────────────────
-
-export async function loginUser(
-  data: LoginInput,
-  ipAddress: string | null,
-  userAgent: string | null
-): Promise<{ user: UserResponse; tokens: AuthTokens }> {
-  // Check account lockout
-  const locked = await isAccountLocked(data.email);
-  if (locked) {
-    const ttl = await getLockoutTTL(data.email);
-    const minutes = Math.ceil(ttl / 60);
-    throw new ForbiddenError(`Account is locked due to too many failed attempts. Try again in ${minutes} minutes.`);
+    logger.info({ userId: updated.id, clerkId: data.id }, 'Clerk user synced (updated)');
+    return formatUser(updated);
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: data.email.toLowerCase() },
+  // Create new user
+  const created = await prisma.user.create({
+    data: {
+      clerkId: data.id,
+      email,
+      firstName: data.first_name || '',
+      lastName: data.last_name || '',
+      phone: data.phone_numbers?.[0]?.phone_number || null,
+      avatarUrl: data.image_url || null,
+      isEmailVerified: true,
+      role: role as any,
+    },
   });
 
-  if (!user) {
-    await recordFailedLogin(data.email);
-    throw new UnauthorizedError('Invalid email or password');
-  }
+  logger.info({ userId: created.id, clerkId: data.id }, 'Clerk user synced (created)');
 
-  if (!user.isActive) {
-    throw new UnauthorizedError('Account has been deactivated');
-  }
-
-  // Verify password
-  const isValid = await argon2.verify(user.passwordHash, data.password);
-  if (!isValid) {
-    const isNowLocked = await recordFailedLogin(data.email);
-    if (isNowLocked) {
-      throw new ForbiddenError('Account has been locked due to too many failed attempts. Try again in 30 minutes.');
-    }
-    throw new UnauthorizedError('Invalid email or password');
-  }
-
-  // Clear failed login attempts on success
-  await clearFailedLogins(data.email);
-
-  // Update last login
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { lastLoginAt: new Date() },
+  // Queue welcome email for new users
+  await queueEmail('welcome', {
+    email: created.email,
+    firstName: created.firstName,
+  }).catch((err) => {
+    logger.error({ err, userId: created.id }, 'Failed to queue welcome email');
   });
 
-  // Generate tokens
-  const tokens = await createSession(user.id, user.role, ipAddress, userAgent);
-
-  logger.info({ userId: user.id }, 'User logged in');
-
-  return {
-    user: formatUser(user),
-    tokens,
-  };
-}
-
-// ─── Refresh Token ──────────────────────
-
-export async function refreshTokens(
-  refreshToken: string,
-  ipAddress: string | null,
-  userAgent: string | null
-): Promise<AuthTokens> {
-  // Verify the refresh token JWT
-  let payload;
-  try {
-    payload = verifyRefreshToken(refreshToken);
-  } catch {
-    throw new UnauthorizedError('Invalid refresh token');
-  }
-
-  // Find the session in DB
-  const session = await prisma.session.findUnique({
-    where: { id: payload.sessionId },
-    include: { user: true },
-  });
-
-  if (!session || session.refreshToken !== refreshToken) {
-    // Possible token reuse attack — invalidate all sessions for this user
-    if (session) {
-      await prisma.session.deleteMany({ where: { userId: session.userId } });
-      await redis.del(`sessions:${session.userId}`);
-      logger.warn({ userId: session.userId }, 'Potential refresh token reuse attack — all sessions revoked');
-    }
-    throw new UnauthorizedError('Invalid refresh token');
-  }
-
-  if (session.expiresAt < new Date()) {
-    await prisma.session.delete({ where: { id: session.id } });
-    throw new UnauthorizedError('Refresh token expired');
-  }
-
-  if (!session.user.isActive) {
-    throw new UnauthorizedError('Account has been deactivated');
-  }
-
-  // Rotate: delete old session and create new one
-  await prisma.session.delete({ where: { id: session.id } });
-
-  const tokens = await createSession(session.userId, session.user.role, ipAddress, userAgent);
-
-  return tokens;
-}
-
-// ─── Logout ─────────────────────────────
-
-export async function logoutUser(refreshToken: string): Promise<void> {
-  let payload;
-  try {
-    payload = verifyRefreshToken(refreshToken);
-  } catch {
-    return; // Silently ignore invalid tokens on logout
-  }
-
-  await prisma.session.deleteMany({
-    where: { id: payload.sessionId },
-  });
-
-  await redis.del(`sessions:${payload.userId}`);
+  return formatUser(created);
 }
 
 /**
- * Logout from all devices.
+ * Deactivate a local user record when Clerk fires `user.deleted`.
  */
-export async function logoutAllSessions(userId: string): Promise<void> {
-  await prisma.session.deleteMany({ where: { userId } });
-  await redis.del(`sessions:${userId}`);
+export async function deleteClerkUser(clerkId: string): Promise<void> {
+  const user = await prisma.user.findUnique({ where: { clerkId } });
+
+  if (!user) {
+    logger.warn({ clerkId }, 'Clerk user.deleted — no matching local user');
+    return;
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { isActive: false },
+  });
+
+  // Clean up sessions
+  await prisma.session.deleteMany({ where: { userId: user.id } });
+
+  logger.info({ userId: user.id, clerkId }, 'Clerk user deactivated');
+}
+
+/**
+ * Look up a local user by their Clerk ID.
+ * Called from `getMe` to return local DB user data.
+ */
+export async function getUserByClerkId(clerkId: string) {
+  return prisma.user.findUnique({
+    where: { clerkId },
+    select: {
+      id: true,
+      clerkId: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      role: true,
+      avatarUrl: true,
+      isEmailVerified: true,
+      phone: true,
+      isActive: true,
+      createdAt: true,
+    },
+  });
 }
 
 // ─── Helpers ────────────────────────────
 
-async function createSession(
-  userId: string,
-  role: string,
-  ipAddress: string | null,
-  userAgent: string | null
-): Promise<AuthTokens> {
-  const permissions = getPermissionsForRole(role);
-  const sessionId = generateSecureToken(16);
-
-  const accessToken = generateAccessToken({ userId, role, permissions });
-  const newRefreshToken = generateRefreshToken({ userId, sessionId });
-
-  const expiresAt = new Date(Date.now() + parseDuration(env.JWT_REFRESH_EXPIRY));
-
-  // Store session in DB
-  await prisma.session.create({
-    data: {
-      id: sessionId,
-      userId,
-      refreshToken: newRefreshToken,
-      ipAddress,
-      userAgent: userAgent?.substring(0, 500) || null,
-      expiresAt,
-    },
-  });
-
-  // Cache in Redis for quick validation
-  await redis.setex(
-    `sessions:${userId}:${sessionId}`,
-    Math.floor(parseDuration(env.JWT_REFRESH_EXPIRY) / 1000),
-    'active'
-  );
-
-  return { accessToken, refreshToken: newRefreshToken };
-}
-
 function formatUser(user: any): UserResponse {
   return {
     id: user.id,
+    clerkId: user.clerkId,
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,

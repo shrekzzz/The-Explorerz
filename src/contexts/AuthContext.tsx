@@ -1,125 +1,50 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { api, setAccessToken, getAccessToken, getErrorMessage } from '@/lib/api';
+import { ClerkProvider, SignedIn, SignedOut, useUser, useAuth as useClerkAuth } from '@clerk/clerk-react';
+import { ReactNode } from 'react';
 
-// ─── Types ──────────────────────────────
+// ─── Clerk Provider Wrapper ─────────────
 
-interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  avatarUrl: string | null;
-  isEmailVerified: boolean;
-  phone?: string;
-  createdAt?: string;
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+if (!CLERK_PUBLISHABLE_KEY) {
+  throw new Error('Missing Clerk Publishable Key');
 }
-
-interface AuthContextType {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
-  logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
-}
-
-interface RegisterData {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  phone?: string;
-}
-
-// ─── Context ────────────────────────────
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// ─── Provider ───────────────────────────
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Try to restore session on mount
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        // Try refreshing — if we have a valid refresh cookie, this will work
-        const { data: refreshData } = await api.post('/auth/refresh');
-        setAccessToken(refreshData.data.accessToken);
-
-        // Fetch user profile
-        const { data: meData } = await api.get('/auth/me');
-        setUser(meData.data);
-      } catch {
-        // Not authenticated — that's fine
-        setAccessToken(null);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initAuth();
-  }, []);
-
-  const login = useCallback(async (email: string, password: string) => {
-    const { data } = await api.post('/auth/login', { email, password });
-    setAccessToken(data.data.accessToken);
-    setUser(data.data.user);
-  }, []);
-
-  const register = useCallback(async (registerData: RegisterData) => {
-    const { data } = await api.post('/auth/register', registerData);
-    setAccessToken(data.data.accessToken);
-    setUser(data.data.user);
-  }, []);
-
-  const logout = useCallback(async () => {
-    try {
-      await api.post('/auth/logout');
-    } catch {
-      // Even if logout fails on server, clear client state
-    }
-    setAccessToken(null);
-    setUser(null);
-  }, []);
-
-  const refreshUser = useCallback(async () => {
-    try {
-      const { data } = await api.get('/auth/me');
-      setUser(data.data);
-    } catch {
-      // Silently fail
-    }
-  }, []);
-
   return (
-    <AuthContext.Provider value={{
-      user,
-      isAuthenticated: !!user,
-      isLoading,
-      login,
-      register,
-      logout,
-      refreshUser,
-    }}>
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
       {children}
-    </AuthContext.Provider>
+    </ClerkProvider>
   );
 }
 
-// ─── Hook ───────────────────────────────
+// ─── Custom Hook for Auth ───────────────
 
-export function useAuth(): AuthContextType {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+export function useAuth() {
+  const { user, isLoaded } = useUser();
+  const { getToken, signOut } = useClerkAuth();
+
+  return {
+    user: user ? {
+      id: user.id,
+      email: user.primaryEmailAddress?.emailAddress || '',
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      role: (user.publicMetadata?.role as string) || 'USER',
+      avatarUrl: user.imageUrl || null,
+      isEmailVerified: user.primaryEmailAddress?.verification?.status === 'verified',
+      phone: user.primaryPhoneNumber?.phoneNumber,
+      createdAt: user.createdAt?.toISOString(),
+    } : null,
+    isAuthenticated: !!user,
+    isLoading: !isLoaded,
+    getToken, // Use this to get JWT for API calls
+    logout: signOut,
+    // Clerk handles login/register via UI components
+  };
 }
 
-export default AuthContext;
+// ─── Export Clerk Components ────────────
+
+export { SignedIn, SignedOut, useUser, useClerkAuth };
+
+export default { AuthProvider, useAuth };

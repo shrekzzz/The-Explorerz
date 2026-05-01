@@ -31,7 +31,9 @@ export async function uploadSingleImage(req: Request, res: Response, next: NextF
   try {
     if (!req.file) throw new BadRequestError('No file uploaded');
 
-    const folder = (req.query.folder as string) || 'explorerz';
+    const rawFolder = (req.query.folder as string) || 'explorerz';
+    // Sanitize folder name — only allow alphanumeric, hyphens, underscores
+    const folder = rawFolder.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 50) || 'explorerz';
     const result = await uploadImage(req.file.buffer, req.file.originalname, folder);
 
     res.status(201).json({
@@ -56,7 +58,8 @@ export async function uploadMultipleImages(req: Request, res: Response, next: Ne
       throw new BadRequestError('No files uploaded');
     }
 
-    const folder = (req.query.folder as string) || 'explorerz';
+    const rawFolder = (req.query.folder as string) || 'explorerz';
+    const folder = rawFolder.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 50) || 'explorerz';
     const files = req.files as Express.Multer.File[];
     const results = await Promise.all(
       files.map((file) => uploadImage(file.buffer, file.originalname, folder))

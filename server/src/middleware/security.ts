@@ -1,19 +1,35 @@
 import helmet from 'helmet';
 import cors from 'cors';
-import { Express } from 'express';
+import crypto from 'crypto';
+import { Express, Request, Response, NextFunction } from 'express';
 import { env } from '../config/env.js';
+
+/**
+ * Generate CSP nonce for inline scripts.
+ * This prevents XSS by only allowing scripts with the correct nonce.
+ */
+export function cspNonce(req: Request, res: Response, next: NextFunction): void {
+  res.locals.nonce = crypto.randomBytes(16).toString('base64');
+  next();
+}
 
 /**
  * Apply all security middleware to the Express app.
  */
 export function applySecurityMiddleware(app: Express): void {
+  // ─── CSP Nonce Generation ─────────────
+  app.use(cspNonce);
+
   // ─── Helmet — Security Headers ────────
   app.use(
     helmet({
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: ["'self'"],
+          scriptSrc: [
+            "'self'",
+            (req, res) => `'nonce-${(res as any).locals.nonce}'`, // Dynamic nonce
+          ],
           styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           fontSrc: ["'self'", 'https://fonts.gstatic.com'],
           imgSrc: ["'self'", 'data:', 'https://res.cloudinary.com', 'https://images.unsplash.com', 'blob:'],

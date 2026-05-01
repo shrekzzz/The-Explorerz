@@ -3,6 +3,7 @@ import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { logger } from './utils/logger.js';
 import redis from './config/redis.js';
+import { initEmailWorker } from './services/email.service.js';
 
 async function main() {
   const app = createApp();
@@ -13,6 +14,10 @@ async function main() {
   } catch (err) {
     logger.warn({ err }, 'Redis connection failed — running without cache');
   }
+
+  // Initialize email worker
+  const emailWorker = initEmailWorker();
+  logger.info('📧 Email worker initialized');
 
   // Start server
   const server = app.listen(env.PORT, () => {
@@ -27,6 +32,11 @@ async function main() {
 
     server.close(async () => {
       logger.info('HTTP server closed');
+      
+      // Close email worker
+      await emailWorker.close();
+      logger.info('Email worker closed');
+      
       try {
         await redis.quit();
         logger.info('Redis disconnected');

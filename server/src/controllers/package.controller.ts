@@ -8,6 +8,7 @@ import {
   packageListKey, packageDetailKey,
   CACHE_TTL,
 } from '../services/cache.service.js';
+import { paramId } from '../utils/params.js';
 
 export async function listPackages(req: Request, res: Response, next: NextFunction) {
   try {
@@ -69,7 +70,7 @@ export async function listPackages(req: Request, res: Response, next: NextFuncti
 
 export async function getPackage(req: Request, res: Response, next: NextFunction) {
   try {
-    const cacheKey = packageDetailKey(req.params.id);
+    const cacheKey = packageDetailKey(paramId(req, 'id'));
     const cached = await getCached<any>(cacheKey);
     if (cached) {
       res.json(cached);
@@ -77,7 +78,7 @@ export async function getPackage(req: Request, res: Response, next: NextFunction
     }
 
     const pkg = await prisma.package.findUnique({
-      where: { id: req.params.id },
+      where: { id: paramId(req, 'id') },
       include: {
         images: { orderBy: { sortOrder: 'asc' } },
         reviews: {
@@ -122,17 +123,17 @@ export async function createPackage(req: Request, res: Response, next: NextFunct
 
 export async function updatePackage(req: Request, res: Response, next: NextFunction) {
   try {
-    const existing = await prisma.package.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.package.findUnique({ where: { id: paramId(req, 'id') } });
     if (!existing) throw new NotFoundError('Package not found');
 
     const data = req.body as UpdatePackageInput;
     const pkg = await prisma.package.update({
-      where: { id: req.params.id },
+      where: { id: paramId(req, 'id') },
       data,
     });
 
     // Invalidate caches
-    await invalidatePackageCache(req.params.id);
+    await invalidatePackageCache(paramId(req, 'id'));
 
     res.json({ success: true, data: pkg });
   } catch (err) {
@@ -142,13 +143,13 @@ export async function updatePackage(req: Request, res: Response, next: NextFunct
 
 export async function deletePackage(req: Request, res: Response, next: NextFunction) {
   try {
-    const existing = await prisma.package.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.package.findUnique({ where: { id: paramId(req, 'id') } });
     if (!existing) throw new NotFoundError('Package not found');
 
-    await prisma.package.delete({ where: { id: req.params.id } });
+    await prisma.package.delete({ where: { id: paramId(req, 'id') } });
 
     // Invalidate caches
-    await invalidatePackageCache(req.params.id);
+    await invalidatePackageCache(paramId(req, 'id'));
 
     res.json({ success: true, message: 'Package deleted' });
   } catch (err) {
