@@ -74,7 +74,7 @@ export default function Footer() {
           <p>© 2026 The Explorerz</p>
           <div className="flex items-center gap-1.5">
             <Mail className="w-3.5 h-3.5" />
-            <span>hello@theexplorerz.co</span>
+            <span>the.explorerz.online@gmail.com</span>
           </div>
         </div>
       </div>
