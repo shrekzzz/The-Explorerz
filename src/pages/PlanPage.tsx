@@ -5,14 +5,11 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import TripForm from "@/components/TripForm";
 import TripSummary from "@/components/TripSummary";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { TripFormData } from "@/types/trip";
-import { generateMockTrip } from "@/lib/tripGenerator";
 import { getTravelPackagesAsync, TravelPackage } from "@/lib/packages";
 import { api, getErrorMessage } from "@/lib/api";
 import { toast } from "sonner";
-import { Plane, MapPin, Sparkles, Calendar, IndianRupee, CheckCircle2, Package as PackageIcon, Edit2, X } from "lucide-react";
+import { Plane, MapPin, Sparkles, Calendar, IndianRupee, CheckCircle2, Package as PackageIcon, X } from "lucide-react";
 
 const loadingSteps = [
   { icon: MapPin,       label: "Analyzing destination",      color: "text-sky-400" },
@@ -127,51 +124,6 @@ function LoadingScreen({ destination }: { destination: string }) {
       <p className="text-xs text-muted-foreground mt-8 text-center">
         Our team will review your request and contact you with a customized itinerary
       </p>
-    </motion.div>
-  );
-}
-          const done = i < activeStep;
-          const active = i === activeStep;
-          return (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: i <= activeStep ? 1 : 0.3, x: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-300 ${
-                active
-                  ? "border-primary/40 bg-primary/10 shadow-lg shadow-primary/10"
-                  : done
-                  ? "border-border/50 bg-card/50"
-                  : "border-border/20 bg-transparent"
-              }`}
-            >
-              <div className={`shrink-0 ${done ? "text-emerald-400" : active ? s.color : "text-muted-foreground/40"}`}>
-                {done ? <CheckCircle2 className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
-              </div>
-              <span className={`text-sm font-medium ${active ? "text-foreground" : done ? "text-muted-foreground" : "text-muted-foreground/40"}`}>
-                {s.label}
-              </span>
-              {active && (
-                <motion.div
-                  animate={{ opacity: [1, 0, 1] }}
-                  transition={{ repeat: Infinity, duration: 1 }}
-                  className="ml-auto flex gap-0.5"
-                >
-                  {[0, 1, 2].map((d) => (
-                    <motion.div
-                      key={d}
-                      animate={{ scaleY: [1, 2, 1] }}
-                      transition={{ repeat: Infinity, duration: 0.6, delay: d * 0.15 }}
-                      className="w-0.5 h-3 bg-primary rounded-full"
-                    />
-                  ))}
-                </motion.div>
-              )}
-            </motion.div>
-          );
-        })}
-      </div>
     </motion.div>
   );
 }
