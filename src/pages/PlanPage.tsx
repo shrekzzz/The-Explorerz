@@ -9,12 +9,12 @@ import { TripFormData } from "@/types/trip";
 import { getTravelPackagesAsync, TravelPackage } from "@/lib/packages";
 import { api, getErrorMessage } from "@/lib/api";
 import { toast } from "sonner";
-import { Plane, MapPin, Sparkles, Calendar, IndianRupee, CheckCircle2, Package as PackageIcon, X } from "lucide-react";
+import { Plane, MapPin, Sparkles, Calendar, CheckCircle2, Package as PackageIcon, X } from "lucide-react";
 
 const loadingSteps = [
   { icon: MapPin,       label: "Analyzing destination",      color: "text-sky-400" },
   { icon: Calendar,     label: "Building day-by-day plan",   color: "text-violet-400" },
-  { icon: IndianRupee,  label: "Calculating budget",         color: "text-emerald-400" },
+  { icon: Sparkles,     label: "Calculating budget",         color: "text-emerald-400" },
   { icon: Sparkles,     label: "Adding special experiences", color: "text-amber-400" },
   { icon: CheckCircle2, label: "Finalizing your itinerary",  color: "text-primary" },
 ];
@@ -170,24 +170,33 @@ export default function PlanPage() {
   };
 
   const handleSend = async (updatedData: TripFormData) => {
-    // Send trip plan as enquiry to admin
+    // Send trip plan to backend
     setLoading(true);
     
     try {
-      // Submit trip plan as enquiry
-      const response = await api.post('/enquiries', {
-        name: "Trip Plan Request",
-        email: "support@theexplorerz.online",
-        phone: "9999999999",
-        city: updatedData.destination,
-        packageTitle: `${updatedData.days}-Day Trip to ${updatedData.destination}`,
-        packagePrice: updatedData.budget,
-        numberOfPeople: 1,
-        travelDate: null,
-        selectedRoute: null,
-        budgetMin: updatedData.budget,
-        budgetMax: updatedData.budget,
-        remarks: `Trip Plan Request:\n- Destination: ${updatedData.destination}\n- Duration: ${updatedData.days} days\n- Budget: ₹${updatedData.budget}\n- Interests: ${updatedData.interests.join(', ')}`,
+      // Create a trip with basic itinerary structure
+      const response = await api.post('/trips', {
+        destination: updatedData.destination,
+        days: updatedData.days,
+        budget: updatedData.budget,
+        interests: updatedData.interests,
+        isPublic: false,
+        guestName: null,
+        guestEmail: null,
+        guestPhone: null,
+        budgetBreakdown: {
+          accommodation: updatedData.budget * 0.4,
+          food: updatedData.budget * 0.2,
+          transport: updatedData.budget * 0.2,
+          activities: updatedData.budget * 0.2,
+          total: updatedData.budget,
+        },
+        itinerary: Array.from({ length: updatedData.days }, (_, i) => ({
+          dayNumber: i + 1,
+          title: `Day ${i + 1}`,
+          activities: [],
+        })),
+        hotels: [],
       });
 
       console.log('Trip plan submitted:', response.data);
@@ -309,7 +318,7 @@ export default function PlanPage() {
                         
                         <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {selectedPackage.duration}</span>
-                          <span className="flex items-center gap-1"><IndianRupee className="w-3 h-3" /> {selectedPackage.price.toLocaleString("en-IN")}</span>
+                          <span className="flex items-center gap-1">{selectedPackage.price.toLocaleString("en-IN")}</span>
                         </div>
                       </div>
                     </div>
