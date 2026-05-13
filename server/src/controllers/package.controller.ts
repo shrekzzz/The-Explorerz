@@ -253,3 +253,31 @@ export async function deletePackage(req: Request, res: Response, next: NextFunct
     next(err);
   }
 }
+
+export async function reorderPackages(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { packageIds } = req.body;
+
+    if (!Array.isArray(packageIds) || packageIds.length === 0) {
+      res.status(400).json({ success: false, message: 'Invalid packageIds array' });
+      return;
+    }
+
+    // Update the sortOrder for each package based on its position in the array
+    const updates = packageIds.map((id, index) =>
+      prisma.package.update({
+        where: { id },
+        data: { sortOrder: index },
+      })
+    );
+
+    await Promise.all(updates);
+
+    // Invalidate cache
+    invalidatePackageCache();
+
+    res.json({ success: true, message: 'Package order updated' });
+  } catch (err) {
+    next(err);
+  }
+}

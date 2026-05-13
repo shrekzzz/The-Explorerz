@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { TripFormData } from "@/types/trip";
 import { generateMockTrip } from "@/lib/tripGenerator";
 import { getTravelPackagesAsync, TravelPackage } from "@/lib/packages";
+import { api, getErrorMessage } from "@/lib/api";
+import { toast } from "sonner";
 import { Plane, MapPin, Sparkles, Calendar, IndianRupee, CheckCircle2, Package as PackageIcon, Edit2, X } from "lucide-react";
 
 const loadingSteps = [
@@ -58,15 +60,6 @@ function AnimatedBackground() {
 }
 
 function LoadingScreen({ destination }: { destination: string }) {
-  const [activeStep, setActiveStep] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveStep((s) => (s < loadingSteps.length - 1 ? s + 1 : s));
-    }, 280);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -105,17 +98,38 @@ function LoadingScreen({ destination }: { destination: string }) {
         animate={{ opacity: 1, y: 0 }}
         className="font-display text-2xl font-bold text-foreground mb-1 text-center"
       >
-        Crafting your perfect trip
+        Sending your trip plan
       </motion.h2>
       <p className="text-muted-foreground text-sm mb-8 text-center">
-        Planning your adventure to{" "}
+        Submitting your request to{" "}
         <span className="text-primary font-semibold">{destination}</span>
       </p>
 
-      {/* Steps */}
-      <div className="w-full max-w-xs space-y-3">
-        {loadingSteps.map((s, i) => {
-          const Icon = s.icon;
+      {/* Simple loading indicator */}
+      <div className="flex items-center gap-2">
+        <motion.div
+          animate={{ scale: [1, 1.2, 1] }}
+          transition={{ repeat: Infinity, duration: 0.8 }}
+          className="w-2 h-2 rounded-full bg-primary"
+        />
+        <motion.div
+          animate={{ scale: [1, 1.2, 1] }}
+          transition={{ repeat: Infinity, duration: 0.8, delay: 0.2 }}
+          className="w-2 h-2 rounded-full bg-primary"
+        />
+        <motion.div
+          animate={{ scale: [1, 1.2, 1] }}
+          transition={{ repeat: Infinity, duration: 0.8, delay: 0.4 }}
+          className="w-2 h-2 rounded-full bg-primary"
+        />
+      </div>
+
+      <p className="text-xs text-muted-foreground mt-8 text-center">
+        Our team will review your request and contact you with a customized itinerary
+      </p>
+    </motion.div>
+  );
+}
           const done = i < activeStep;
           const active = i === activeStep;
           return (
@@ -204,16 +218,45 @@ export default function PlanPage() {
   };
 
   const handleSend = async (updatedData: TripFormData) => {
-    // Generate trip and navigate to results page
+    // Send trip plan as enquiry to admin
     setLoading(true);
     
-    // Simulate trip generation
-    setTimeout(() => {
-      const trip = generateMockTrip(updatedData);
-      sessionStorage.setItem("current_trip", JSON.stringify(trip));
+    try {
+      // Submit trip plan as enquiry
+      const response = await api.post('/enquiries', {
+        name: "Trip Plan Request",
+        email: "support@theexplorerz.online",
+        phone: "9999999999",
+        city: updatedData.destination,
+        packageTitle: `${updatedData.days}-Day Trip to ${updatedData.destination}`,
+        packagePrice: updatedData.budget,
+        numberOfPeople: 1,
+        travelDate: null,
+        selectedRoute: null,
+        budgetMin: updatedData.budget,
+        budgetMax: updatedData.budget,
+        remarks: `Trip Plan Request:\n- Destination: ${updatedData.destination}\n- Duration: ${updatedData.days} days\n- Budget: ₹${updatedData.budget}\n- Interests: ${updatedData.interests.join(', ')}`,
+      });
+
+      console.log('Trip plan submitted:', response.data);
+
+      toast.success('Trip plan sent successfully!', {
+        description: 'Our team will review and contact you with a customized itinerary.',
+      });
+
+      // Navigate after a short delay
+      setTimeout(() => {
+        setLoading(false);
+        navigate("/packages");
+      }, 1500);
+    } catch (error) {
       setLoading(false);
-      navigate("/results");
-    }, 3000);
+      console.error('Trip plan submission error:', error);
+      console.error('Error details:', (error as any)?.response?.data);
+      toast.error('Failed to send trip plan', {
+        description: getErrorMessage(error),
+      });
+    }
   };
 
   return (

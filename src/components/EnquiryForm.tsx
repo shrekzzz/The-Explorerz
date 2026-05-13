@@ -108,7 +108,10 @@ export default function EnquiryForm({ packageTitle, packagePrice, packageData, o
         description: 'Check your email for confirmation. Our team will contact you within 24 hours.',
       });
 
-      onClose();
+      // Close the form after a short delay to show the success message
+      setTimeout(() => {
+        onClose();
+      }, 1500);
     } catch (error) {
       toast.error('Failed to send enquiry', {
         description: getErrorMessage(error),

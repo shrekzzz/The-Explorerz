@@ -257,6 +257,7 @@ export default function PackageDetailPage() {
                   whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.95 }}
                   transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                  className="hidden"
                 >
                   <Button
                     size="lg"
@@ -571,6 +572,7 @@ export default function PackageDetailPage() {
               whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              className="hidden"
             >
               <Button
                 size="lg"

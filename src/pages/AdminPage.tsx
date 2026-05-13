@@ -383,10 +383,10 @@ export default function AdminPage() {
   const visibleTabs = tabs.filter(t => !t.superAdminOnly || isSuperAdmin);
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
 
-      {/* ── Sidebar ── */}
-      <aside className="w-60 shrink-0 border-r border-border bg-card flex flex-col">
+      {/* ── Sidebar (Hidden on mobile) ── */}
+      <aside className="hidden lg:flex lg:w-60 lg:shrink-0 border-r border-border bg-card flex-col">
         <div className="p-4 border-b border-border">
           <Link to="/" className="flex items-center justify-center mb-3 hover:opacity-80 transition-opacity">
             <img src="/logo.png" alt="DeshYatra" className="h-10 w-auto object-contain" />
@@ -402,14 +402,14 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {visibleTabs.map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 tab === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
-              <Icon className="w-4 h-4" />{label}
+              <Icon className="w-4 h-4 shrink-0" /><span className="truncate">{label}</span>
             </button>
           ))}
         </nav>
@@ -429,10 +429,10 @@ export default function AdminPage() {
         {tab === "profile" && <ProfilePage hideNav />}
 
         {tab !== "profile" && (
-          <div className="p-8 max-w-6xl mx-auto space-y-6">
+          <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto space-y-6">
 
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-              <h1 className="text-2xl font-bold text-foreground">
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground">
                 {tab === "overview" && "Dashboard Overview"}
                 {tab === "users" && "User Management"}
                 {tab === "packageEditor" && "Package Editor"}
@@ -440,13 +440,13 @@ export default function AdminPage() {
                 {tab === "enquiries" && "Enquiries Management"}
                 {tab === "consentForms" && "Consent Forms Management"}
               </h1>
-              <p className="text-muted-foreground text-sm mt-0.5">Welcome back, {user?.firstName}.</p>
+              <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Welcome back, {user?.firstName}.</p>
             </motion.div>
 
             {/* ── Overview ── */}
             {tab === "overview" && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-                <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
                   {statCards.map(({ label, value, icon: Icon, color, bg }, i) => (
                     <motion.div key={label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
                       <Card>

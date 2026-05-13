@@ -362,8 +362,21 @@ function saveLocalPackage(pkg: TravelPackage): void {
   localStorage.setItem(PACKAGES_STORAGE_KEY, JSON.stringify(packages));
 }
 
-export function savePackageOrder(packages: TravelPackage[]): void {
+export async function savePackageOrder(packages: TravelPackage[]): Promise<void> {
+  // Save to localStorage first
   localStorage.setItem(PACKAGES_STORAGE_KEY, JSON.stringify(packages));
+  
+  // If authenticated, save the order to the backend
+  if (getAccessToken()) {
+    try {
+      // Send the new order to the backend
+      const packageIds = packages.map(p => p.id);
+      await api.post("/packages/reorder", { packageIds });
+    } catch (error) {
+      console.error('Failed to save package order to API:', error);
+      // Order is still saved locally, so continue
+    }
+  }
 }
 
 function deleteLocalPackage(id: string): void {

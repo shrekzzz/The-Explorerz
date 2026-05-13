@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listPackages, getPackage, createPackage, updatePackage, deletePackage } from '../controllers/package.controller.js';
+import { listPackages, getPackage, createPackage, updatePackage, deletePackage, reorderPackages } from '../controllers/package.controller.js';
 import { authenticate, optionalAuth } from '../middleware/auth.js';
 import { requirePermission, PERMISSIONS } from '../middleware/rbac.js';
 import { validateBody, validateQuery } from '../middleware/validate.js';
@@ -27,6 +27,13 @@ router.put('/:id',
   validateBody(updatePackageSchema),
   auditLog({ action: 'PACKAGE_UPDATE', resource: 'package' }),
   updatePackage
+);
+
+router.post('/reorder',
+  authenticate,
+  requirePermission(PERMISSIONS.PACKAGE_UPDATE),
+  auditLog({ action: 'PACKAGE_REORDER', resource: 'package' }),
+  reorderPackages
 );
 
 router.delete('/:id',

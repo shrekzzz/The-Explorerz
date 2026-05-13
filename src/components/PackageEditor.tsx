@@ -94,23 +94,52 @@ export default function PackageEditor() {
   };
 
   const handleDragStart = (id: string) => (e: DragEvent<HTMLDivElement>) => {
-    setDraggedPackageId(id); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", id);
+    setDraggedPackageId(id); 
+    e.dataTransfer!.effectAllowed = "move"; 
+    e.dataTransfer!.setData("text/plain", id);
+    // Add visual feedback
+    if (e.currentTarget) {
+      e.currentTarget.style.opacity = "0.5";
+    }
   };
-  const handleDragOver = (id: string) => (e: DragEvent<HTMLDivElement>) => { e.preventDefault(); setDragOverPackageId(id); };
+  
+  const handleDragOver = (id: string) => (e: DragEvent<HTMLDivElement>) => { 
+    e.preventDefault(); 
+    e.dataTransfer!.dropEffect = "move";
+    setDragOverPackageId(id); 
+  };
+  
   const handleDrop = (id: string) => (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const sourceId = e.dataTransfer.getData("text/plain") || draggedPackageId;
-    if (!sourceId || sourceId === id) return;
+    const sourceId = e.dataTransfer!.getData("text/plain") || draggedPackageId;
+    if (!sourceId || sourceId === id) {
+      setDraggedPackageId(null); 
+      setDragOverPackageId(null);
+      return;
+    }
     const from = packages.findIndex(p => p.id === sourceId);
     const to = packages.findIndex(p => p.id === id);
-    if (from === -1 || to === -1) return;
+    if (from === -1 || to === -1) {
+      setDraggedPackageId(null); 
+      setDragOverPackageId(null);
+      return;
+    }
     const updated = [...packages];
     const [moved] = updated.splice(from, 1);
     updated.splice(to, 0, moved);
-    setPackages(updated); savePackageOrder(updated);
-    setDraggedPackageId(null); setDragOverPackageId(null);
+    setPackages(updated); 
+    savePackageOrder(updated);
+    setDraggedPackageId(null); 
+    setDragOverPackageId(null);
   };
-  const handleDragEnd = () => { setDraggedPackageId(null); setDragOverPackageId(null); };
+  
+  const handleDragEnd = (e: DragEvent<HTMLDivElement>) => { 
+    if (e.currentTarget) {
+      e.currentTarget.style.opacity = "1";
+    }
+    setDraggedPackageId(null); 
+    setDragOverPackageId(null);
+  };
 
   const upd = (field: keyof TravelPackage, value: any) =>
     editingPackage && setEditingPackage({ ...editingPackage, [field]: value });
@@ -328,10 +357,16 @@ export default function PackageEditor() {
             onDragOver={handleDragOver(pkg.id)}
             onDrop={handleDrop(pkg.id)}
             onDragEnd={handleDragEnd}
-            className={`relative transition-all border bg-card shadow-sm hover:shadow-lg ${dragOverPackageId===pkg.id ? "border-primary bg-primary/5" : "border-border"}`}
+            className={`relative transition-all cursor-move ${
+              draggedPackageId === pkg.id 
+                ? "opacity-50 border-primary/50" 
+                : dragOverPackageId === pkg.id 
+                ? "border-2 border-primary bg-primary/5 shadow-lg" 
+                : "border-border hover:border-primary/50 hover:shadow-md"
+            }`}
           >
             <CardHeader>
-              <div className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-2xl bg-muted text-muted-foreground shadow-sm hover:cursor-grab">
+              <div className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground shadow-sm hover:bg-primary/10 hover:text-primary transition-colors">
                 <GripVertical className="w-5 h-5" />
               </div>
               <div className="flex items-start justify-between gap-4">
@@ -347,12 +382,12 @@ export default function PackageEditor() {
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <Button variant="outline" size="sm" onClick={() => movePackage(pkg.id,"up")} disabled={index===0}><ChevronUp className="w-4 h-4" /></Button>
-                  <Button variant="outline" size="sm" onClick={() => movePackage(pkg.id,"down")} disabled={index===packages.length-1}><ChevronDown className="w-4 h-4" /></Button>
-                  <Button variant="outline" size="sm" onClick={() => handleEdit(pkg)}><Edit className="w-4 h-4" /></Button>
+                  <Button variant="outline" size="sm" onClick={() => movePackage(pkg.id,"up")} disabled={index===0} title="Move up"><ChevronUp className="w-4 h-4" /></Button>
+                  <Button variant="outline" size="sm" onClick={() => movePackage(pkg.id,"down")} disabled={index===packages.length-1} title="Move down"><ChevronDown className="w-4 h-4" /></Button>
+                  <Button variant="outline" size="sm" onClick={() => handleEdit(pkg)} title="Edit"><Edit className="w-4 h-4" /></Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm"><Trash2 className="w-4 h-4" /></Button>
+                      <Button variant="outline" size="sm" title="Delete"><Trash2 className="w-4 h-4" /></Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
