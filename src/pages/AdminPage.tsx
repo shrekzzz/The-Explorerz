@@ -382,11 +382,20 @@ export default function AdminPage() {
 
   const visibleTabs = tabs.filter(t => !t.superAdminOnly || isSuperAdmin);
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-background flex flex-col lg:flex-row">
 
+      {/* ── Mobile Sidebar Toggle ── */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
       {/* ── Sidebar (Hidden on mobile) ── */}
-      <aside className="hidden lg:flex lg:w-60 lg:shrink-0 border-r border-border bg-card flex-col">
+      <aside className={`fixed lg:static inset-y-0 left-0 w-60 border-r border-border bg-card flex-col z-50 transform transition-transform lg:transform-none ${
+        sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      }`}>
         <div className="p-4 border-b border-border">
           <Link to="/" className="flex items-center justify-center mb-3 hover:opacity-80 transition-opacity">
             <img src="/logo.png" alt="DeshYatra" className="h-10 w-auto object-contain" />
@@ -425,11 +434,24 @@ export default function AdminPage() {
       {/* ── Main ── */}
       <main className="flex-1 overflow-auto">
 
+        {/* Mobile Header with Menu Button */}
+        <div className="lg:hidden sticky top-0 z-40 bg-card border-b border-border px-4 py-3 flex items-center justify-between">
+          <h1 className="text-lg font-bold text-foreground">Admin Panel</h1>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 hover:bg-muted rounded-lg transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
+
         {/* Profile tab renders full-page */}
         {tab === "profile" && <ProfilePage hideNav />}
 
         {tab !== "profile" && (
-          <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto space-y-6">
+          <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
 
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
               <h1 className="text-xl sm:text-2xl font-bold text-foreground">
@@ -446,7 +468,7 @@ export default function AdminPage() {
             {/* ── Overview ── */}
             {tab === "overview" && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
                   {statCards.map(({ label, value, icon: Icon, color, bg }, i) => (
                     <motion.div key={label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
                       <Card>

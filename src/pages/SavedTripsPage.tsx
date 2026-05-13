@@ -334,7 +334,7 @@ export default function SavedTripsPage() {
             >
               <BookmarkCheck className="w-4 h-4" /> Saved Trips
             </motion.div>
-            <h1 className="font-display text-4xl sm:text-5xl font-extrabold text-foreground mb-3">
+            <h1 className="font-display text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-extrabold text-foreground mb-3">
               Your Travel{" "}
               <span className="relative">
                 <span className="text-primary">Collection</span>
@@ -358,7 +358,7 @@ export default function SavedTripsPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8"
+                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-3 mb-8"
               >
                 {[
                   { icon: BookmarkCheck, label: "Saved Trips",   value: trips.length,                          color: "text-primary",    bg: "bg-primary/10 border-primary/20" },
@@ -429,7 +429,7 @@ export default function SavedTripsPage() {
           {trips.length === 0 ? (
             <EmptyState />
           ) : (
-            <motion.div layout className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
               <AnimatePresence>
                 {sorted.map((trip, i) => (
                   <TripCard

@@ -226,7 +226,7 @@ export default function PlanPage() {
           ← Back
         </motion.button>
 
-        <div className="relative w-full max-w-lg">
+        <div className="relative w-full max-w-sm sm:max-w-md md:max-w-lg px-4 sm:px-0">
           <AnimatePresence mode="wait">
             {loading ? (
               <motion.div
@@ -335,7 +335,7 @@ export default function PlanPage() {
                 </div>
 
                 {/* Form */}
-                <div className="px-8 py-8">
+                <div className="px-4 sm:px-6 md:px-8 py-6 sm:py-8">
                   <TripForm onSubmit={handleFormSubmit} initialData={initialData} />
                 </div>
               </motion.div>

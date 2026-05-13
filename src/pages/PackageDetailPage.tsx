@@ -166,7 +166,7 @@ export default function PackageDetailPage() {
             <ArrowLeft className="w-4 h-4" /> Back to Packages
           </motion.button>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 sm:gap-8 items-start">
             {/* Left Image */}
             <motion.div 
               initial={{ opacity: 0, x: -50 }}
@@ -201,7 +201,7 @@ export default function PackageDetailPage() {
                 )}
               </div>
 
-              <h1 className="font-display text-4xl lg:text-5xl font-extrabold leading-tight text-foreground">
+              <h1 className="font-display text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-extrabold leading-tight text-foreground">
                 {pkg.title}
               </h1>
               <p className="text-muted-foreground text-lg">{pkg.subtitle}</p>

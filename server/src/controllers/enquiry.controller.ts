@@ -43,41 +43,49 @@ export async function createEnquiry(req: Request, res: Response, next: NextFunct
       },
     });
 
-    // Send confirmation email to user
-    try {
-      await sendEnquiryConfirmationEmail(email, name, packageTitle);
-    } catch (emailErr) {
-      logger.error({ err: emailErr, enquiryId: enquiry.id }, 'Failed to send confirmation email');
-    }
-
-    // Send notification email to admin
-    const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_FROM;
-    if (adminEmail) {
-      try {
-        await sendEnquiryNotificationEmail(adminEmail, {
-          name,
-          email,
-          phone,
-          city,
-          packageTitle,
-          numberOfPeople,
-          travelDate: travelDate ? format(new Date(travelDate), 'PPP') : 'Not specified',
-          budgetMin,
-          budgetMax,
-          remarks: remarks || 'None',
-        });
-      } catch (emailErr) {
-        logger.error({ err: emailErr, enquiryId: enquiry.id }, 'Failed to send admin notification email');
-      }
-    }
-
-    // Log audit event
-    await logAuditEvent(null, 'ENQUIRY_CREATED', 'enquiry', enquiry.id, { packageTitle }, req.ip);
-
+    // Send response immediately (don't wait for emails)
     res.status(201).json({
       success: true,
       message: 'Enquiry submitted successfully. Check your email for confirmation.',
       data: { id: enquiry.id },
+    });
+
+    // Send emails asynchronously in the background
+    setImmediate(async () => {
+      try {
+        // Send confirmation email to user
+        try {
+          await sendEnquiryConfirmationEmail(email, name, packageTitle);
+        } catch (emailErr) {
+          logger.error({ err: emailErr, enquiryId: enquiry.id }, 'Failed to send confirmation email');
+        }
+
+        // Send notification email to admin
+        const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_FROM;
+        if (adminEmail) {
+          try {
+            await sendEnquiryNotificationEmail(adminEmail, {
+              name,
+              email,
+              phone,
+              city,
+              packageTitle,
+              numberOfPeople,
+              travelDate: travelDate ? format(new Date(travelDate), 'PPP') : 'Not specified',
+              budgetMin,
+              budgetMax,
+              remarks: remarks || 'None',
+            });
+          } catch (emailErr) {
+            logger.error({ err: emailErr, enquiryId: enquiry.id }, 'Failed to send admin notification email');
+          }
+        }
+
+        // Log audit event
+        await logAuditEvent(null, 'ENQUIRY_CREATED', 'enquiry', enquiry.id, { packageTitle }, req.ip);
+      } catch (err) {
+        logger.error({ err }, 'Error in background enquiry processing');
+      }
     });
   } catch (err) {
     next(err);

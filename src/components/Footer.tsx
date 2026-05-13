@@ -7,20 +7,20 @@ export default function Footer() {
       <div className="container mx-auto max-w-6xl px-4 py-10">
         <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-8 mb-8">
           {/* Brand */}
-          <div className="space-y-3">
-            <Link to="/" className="flex items-center gap-2.5 group w-fit">
+          <div className="space-y-3 sm:text-left text-center">
+            <Link to="/" className="flex items-center gap-2.5 group w-fit sm:w-fit mx-auto sm:mx-0">
               <img src="/logo.png" alt="DeshYatra Co." className="h-10 w-auto object-contain" />
             </Link>
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto sm:mx-0">
               AI-powered travel planning for incredible Indian adventures. Your next journey starts here.
             </p>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground justify-center sm:justify-start">
               <MapPin className="w-3.5 h-3.5 text-primary" /> Made with ❤️ for Indian travelers
             </div>
           </div>
 
           {/* Quick links */}
-          <div className="space-y-3">
+          <div className="space-y-3 sm:text-left text-center">
             <h4 className="font-display font-semibold text-foreground text-sm uppercase tracking-wider">Explore</h4>
             <ul className="space-y-2">
               {[
@@ -34,7 +34,7 @@ export default function Footer() {
                   <li key={l.to}>
                     <Link
                       to={l.to}
-                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors group"
+                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors group justify-center sm:justify-start"
                     >
                       <Icon className="w-3.5 h-3.5 group-hover:text-primary transition-colors" />
                       {l.label}
@@ -46,7 +46,7 @@ export default function Footer() {
           </div>
 
           {/* Categories */}
-          <div className="space-y-3">
+          <div className="space-y-3 sm:text-left text-center">
             <h4 className="font-display font-semibold text-foreground text-sm uppercase tracking-wider">Categories</h4>
             <ul className="space-y-2">
               {[
@@ -59,7 +59,7 @@ export default function Footer() {
                 <li key={c.label}>
                   <Link
                     to="/packages"
-                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors justify-center sm:justify-start"
                   >
                     <span>{c.emoji}</span> {c.label}
                   </Link>
@@ -70,7 +70,7 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="pt-6 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+        <div className="pt-6 border-t border-border/40 flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-3 text-xs text-muted-foreground text-center sm:text-left">
           <p>© 2026 The Explorerz</p>
           <div className="flex items-center gap-1.5">
             <Mail className="w-3.5 h-3.5" />

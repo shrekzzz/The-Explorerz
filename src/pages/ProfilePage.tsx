@@ -155,7 +155,7 @@ export default function ProfilePage({ hideNav = false }: { hideNav?: boolean }) 
                 className="absolute -inset-2 rounded-[28px] border-2 border-dashed border-primary/30" />
               <motion.div animate={{ rotate: -360 }} transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
                 className="absolute -inset-4 rounded-[36px] border border-violet-500/20" />
-              <div className="relative w-28 h-28 rounded-3xl bg-gradient-to-br from-primary via-violet-500 to-indigo-600 flex items-center justify-center text-white text-4xl font-black shadow-xl shadow-primary/20 border border-border">
+              <div className="relative w-20 sm:w-24 md:w-28 h-20 sm:h-24 md:h-28 rounded-3xl bg-gradient-to-br from-primary via-violet-500 to-indigo-600 flex items-center justify-center text-white text-2xl sm:text-3xl md:text-4xl font-black shadow-xl shadow-primary/20 border border-border">
                 {user.avatarUrl
                   ? <img src={user.avatarUrl} alt={initials} className="w-full h-full rounded-3xl object-cover" />
                   : initials
@@ -193,7 +193,7 @@ export default function ProfilePage({ hideNav = false }: { hideNav?: boolean }) 
               </div>
 
               {/* Name */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-none mb-2">
+              <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-none mb-2">
                 <span className="text-foreground">{user.firstName} </span>
                 <span className="relative">
                   <span className="bg-gradient-to-r from-primary via-violet-500 to-indigo-500 bg-clip-text text-transparent">
