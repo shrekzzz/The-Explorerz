@@ -129,6 +129,7 @@ model Package {
   routes          Json?
   pptUrl          String?         @db.VarChar(500)
   pptFilename     String?         @db.VarChar(255)
+  sortOrder       Int             @default(0)
   createdBy       String?         @db.Uuid
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
