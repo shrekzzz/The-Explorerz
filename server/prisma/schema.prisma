@@ -1,0 +1,405 @@
+// ──────────────────────────────────────────
+// Prisma Schema — The-Explorerz Database
+// ──────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ──────────────────────────────
+
+enum Role {
+  USER
+  STAFF
+  SUPERADMIN
+}
+
+enum PackageCategory {
+  PILGRIMAGE
+  TREK
+  HERITAGE
+  NATURE
+  ADVENTURE
+}
+
+enum PackageStatus {
+  AVAILABLE
+  COMING_SOON
+  ARCHIVED
+}
+
+enum DifficultyLevel {
+  EASY
+  MODERATE
+  DIFFICULT
+  EXTREME
+}
+
+enum ActivityCategory {
+  FOOD
+  ADVENTURE
+  TEMPLES
+  CULTURE
+  NIGHTLIFE
+  NATURE
+  SHOPPING
+  TRANSPORT
+  RELAXATION
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  REFUNDED
+}
+
+// ─── User & Auth ────────────────────────
+
+model User {
+  id              String    @id @default(uuid()) @db.Uuid
+  email           String    @unique @db.VarChar(255)
+  passwordHash    String    @db.VarChar(255)
+  firstName       String    @db.VarChar(100)
+  lastName        String    @db.VarChar(100)
+  phone           String?   @db.VarChar(20)
+  avatarUrl       String?   @db.VarChar(500)
+  role            Role      @default(USER)
+  isEmailVerified Boolean   @default(false)
+  isActive        Boolean   @default(true)
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sessions       Session[]
+  trips          Trip[]
+  bookings       Booking[]
+  reviews        Review[]
+  auditLogs      AuditLog[]
+  packagesCreated Package[] @relation("PackageCreator")
+  reviewedConsentForms ConsentForm[] @relation("ConsentFormReviewer")
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  refreshToken String   @unique @db.VarChar(500)
+  ipAddress    String?  @db.VarChar(45)
+  userAgent    String?  @db.VarChar(500)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([refreshToken])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+// ─── Packages ───────────────────────────
+
+model Package {
+  id              String          @id @default(uuid()) @db.Uuid
+  title           String          @db.VarChar(200)
+  subtitle        String          @db.VarChar(500)
+  category        PackageCategory
+  duration        String          @db.VarChar(50)
+  price           Decimal         @db.Decimal(10, 2)
+  rating          Decimal         @default(0) @db.Decimal(2, 1)
+  reviewCount     Int             @default(0)
+  locations       String[]
+  highlights      String[]
+  highlightImages String[]        @default([])
+  distance        Int?
+  bestTime        String          @db.VarChar(100)
+  difficulty      DifficultyLevel?
+  included        String[]
+  status          PackageStatus   @default(COMING_SOON)
+  routes          Json?
+  pptUrl          String?         @db.VarChar(500)
+  pptFilename     String?         @db.VarChar(255)
+  createdBy       String?         @db.Uuid
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  creator  User?          @relation("PackageCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  images   PackageImage[]
+  bookings Booking[]
+  reviews  Review[]
+
+  @@index([category])
+  @@index([status])
+  @@index([price])
+  @@map("packages")
+}
+
+model PackageImage {
+  id        String  @id @default(uuid()) @db.Uuid
+  packageId String  @db.Uuid
+  url       String  @db.VarChar(500)
+  publicId  String  @db.VarChar(200)
+  isPrimary Boolean @default(false)
+  sortOrder Int     @default(0)
+
+  package Package @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@index([packageId])
+  @@map("package_images")
+}
+
+// ─── Trips ──────────────────────────────
+
+model Trip {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String?  @db.Uuid
+  destination     String   @db.VarChar(200)
+  days            Int
+  budget          Decimal  @db.Decimal(10, 2)
+  interests       String[]
+  budgetBreakdown Json?
+  isPublic        Boolean  @default(false)
+  shareToken      String?  @unique @db.VarChar(64)
+  
+  // Contact info for non-authenticated users
+  guestName       String?  @db.VarChar(200)
+  guestEmail      String?  @db.VarChar(255)
+  guestPhone      String?  @db.VarChar(20)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user      User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itinerary ItineraryDay[]
+  hotels    TripHotel[]
+
+  @@index([userId])
+  @@index([shareToken])
+  @@index([guestEmail])
+  @@map("trips")
+}
+
+model ItineraryDay {
+  id        String @id @default(uuid()) @db.Uuid
+  tripId    String @db.Uuid
+  dayNumber Int
+  title     String @db.VarChar(200)
+
+  trip       Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  activities Activity[]
+
+  @@index([tripId])
+  @@map("itinerary_days")
+}
+
+model Activity {
+  id             String           @id @default(uuid()) @db.Uuid
+  itineraryDayId String           @db.Uuid
+  time           String           @db.VarChar(10)
+  title          String           @db.VarChar(200)
+  description    String           @db.Text
+  locationName   String           @db.VarChar(200)
+  lat            Decimal          @db.Decimal(10, 7)
+  lng            Decimal          @db.Decimal(10, 7)
+  category       ActivityCategory
+  cost           Decimal          @db.Decimal(10, 2)
+
+  itineraryDay ItineraryDay @relation(fields: [itineraryDayId], references: [id], onDelete: Cascade)
+
+  @@index([itineraryDayId])
+  @@map("activities")
+}
+
+model TripHotel {
+  id            String  @id @default(uuid()) @db.Uuid
+  tripId        String  @db.Uuid
+  name          String  @db.VarChar(200)
+  rating        Decimal @db.Decimal(2, 1)
+  pricePerNight Decimal @db.Decimal(10, 2)
+  lat           Decimal @db.Decimal(10, 7)
+  lng           Decimal @db.Decimal(10, 7)
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@map("trip_hotels")
+}
+
+// ─── Bookings ───────────────────────────
+
+model Booking {
+  id          String        @id @default(uuid()) @db.Uuid
+  userId      String        @db.Uuid
+  packageId   String        @db.Uuid
+  status      BookingStatus @default(PENDING)
+  totalAmount Decimal       @db.Decimal(10, 2)
+  travelers   Int           @default(1)
+  travelDate  DateTime      @db.Date
+  contactInfo Json?
+  paymentId   String?       @db.VarChar(200)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  package Package @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([packageId])
+  @@index([status])
+  @@map("bookings")
+}
+
+// ─── Reviews ────────────────────────────
+
+model Review {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  packageId String   @db.Uuid
+  rating    Int      @db.SmallInt
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  package Package @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, packageId])
+  @@index([packageId])
+  @@map("reviews")
+}
+
+// ─── Audit Logs ─────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @db.Uuid
+  action     String   @db.VarChar(100)
+  resource   String   @db.VarChar(100)
+  resourceId String?  @db.VarChar(100)
+  metadata   Json?
+  ipAddress  String?  @db.VarChar(45)
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─── Enquiries ──────────────────────────
+
+enum EnquiryStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  CLOSED
+}
+
+model Enquiry {
+  id             String        @id @default(uuid()) @db.Uuid
+  name           String        @db.VarChar(200)
+  email          String        @db.VarChar(255)
+  phone          String        @db.VarChar(20)
+  city           String        @db.VarChar(100)
+  packageTitle   String        @db.VarChar(200)
+  packagePrice   Decimal       @db.Decimal(10, 2)
+  numberOfPeople Int           @default(1)
+  travelDate     DateTime?     @db.Date
+  selectedRoute  String?       @db.VarChar(200)
+  budgetMin      Decimal       @db.Decimal(10, 2)
+  budgetMax      Decimal       @db.Decimal(10, 2)
+  remarks        String?       @db.Text
+  status         EnquiryStatus @default(NEW)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([email])
+  @@map("enquiries")
+}
+
+// ─── Consent Forms ──────────────────────
+
+enum ConsentFormStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ConsentForm {
+  id                String            @id @default(uuid()) @db.Uuid
+  // Personal Information
+  fullName          String            @db.VarChar(200)
+  email             String            @db.VarChar(255)
+  phone             String            @db.VarChar(20)
+  dateOfBirth       DateTime          @db.Date
+  gender            String            @db.VarChar(20)
+  nationality       String            @db.VarChar(100)
+  address           String            @db.Text
+  city              String            @db.VarChar(100)
+  state             String            @db.VarChar(100)
+  pincode           String            @db.VarChar(10)
+  
+  // Emergency Contact
+  emergencyName     String            @db.VarChar(200)
+  emergencyPhone    String            @db.VarChar(20)
+  emergencyRelation String            @db.VarChar(100)
+  
+  // Travel Details
+  packageName       String            @db.VarChar(200)
+  travelDate        DateTime          @db.Date
+  numberOfTravelers Int               @default(1)
+  
+  // Medical Information
+  medicalConditions String?           @db.Text
+  medicalConditionSeverity String?    @db.VarChar(20)
+  allergies         String?           @db.Text
+  medications       String?           @db.Text
+  bloodGroup        String?           @db.VarChar(10)
+  
+  // Documents (Cloudinary URLs)
+  photoUrl          String?           @db.VarChar(500)
+  photoPublicId     String?           @db.VarChar(200)
+  idProofUrl        String?           @db.VarChar(500)
+  idProofPublicId   String?           @db.VarChar(200)
+  idProofType       String?           @db.VarChar(50)
+  idNumber          String?           @db.VarChar(50)
+  
+  // Consent & Agreements
+  termsAccepted     Boolean           @default(false)
+  privacyAccepted   Boolean           @default(false)
+  medicalConsent    Boolean           @default(false)
+  photoConsent      Boolean           @default(false)
+  
+  // Additional Information
+  specialRequests   String?           @db.Text
+  dietaryPreference String?           @db.VarChar(100)
+  
+  // Status & Tracking
+  status            ConsentFormStatus @default(PENDING)
+  adminNotes        String?           @db.Text
+  reviewedBy        String?           @db.Uuid
+  reviewedAt        DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  reviewer User? @relation("ConsentFormReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([email])
+  @@index([travelDate])
+  @@map("consent_forms")
+}

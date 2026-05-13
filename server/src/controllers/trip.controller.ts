@@ -1,0 +1,172 @@
+import { Request, Response, NextFunction } from 'express';
+import prisma from '../config/database.js';
+import { NotFoundError, ForbiddenError } from '../utils/errors.js';
+import { generateShareToken } from '../utils/crypto.js';
+import { CreateTripInput, TripQuery } from '../validators/trip.schema.js';
+
+export async function listTrips(req: Request, res: Response, next: NextFunction) {
+  try {
+    const query = (req.query as any) as TripQuery;
+    const { destination, sortBy, sortOrder } = query;
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: any = { userId: req.user!.userId };
+    if (destination) {
+      where.destination = { contains: destination, mode: 'insensitive' };
+    }
+
+    const [trips, total] = await Promise.all([
+      prisma.trip.findMany({
+        where,
+        orderBy: { [sortBy]: sortOrder },
+        skip,
+        take: limit,
+      }),
+      prisma.trip.count({ where }),
+    ]);
+
+    res.json({
+      success: true,
+      data: trips,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getTrip(req: Request, res: Response, next: NextFunction) {
+  try {
+    const trip = await prisma.trip.findUnique({
+      where: { id: (req.params.id as string) },
+      include: {
+        itinerary: {
+          include: { activities: true },
+          orderBy: { dayNumber: 'asc' },
+        },
+        hotels: true,
+      },
+    });
+
+    if (!trip) throw new NotFoundError('Trip not found');
+
+    // Check ownership or public
+    if (trip.userId !== req.user?.userId && !trip.isPublic) {
+      throw new ForbiddenError('You do not have access to this trip');
+    }
+
+    res.json({ success: true, data: trip });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getSharedTrip(req: Request, res: Response, next: NextFunction) {
+  try {
+    const trip = await prisma.trip.findUnique({
+      where: { shareToken: (req.params.token as string) },
+      include: {
+        itinerary: {
+          include: { activities: true },
+          orderBy: { dayNumber: 'asc' },
+        },
+        hotels: true,
+        user: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    if (!trip) throw new NotFoundError('Shared trip not found');
+    res.json({ success: true, data: trip });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createTrip(req: Request, res: Response, next: NextFunction) {
+  try {
+    const data = req.body as CreateTripInput;
+    const userId = req.user?.userId;
+
+    // Validate: either authenticated user OR guest contact info
+    if (!userId && (!data.guestName || !data.guestEmail || !data.guestPhone)) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Please provide your name, email, and phone number to save this trip',
+        },
+      });
+      return;
+    }
+
+    const trip = await prisma.trip.create({
+      data: {
+        userId: userId || null,
+        destination: data.destination,
+        days: data.days,
+        budget: data.budget,
+        interests: data.interests,
+        budgetBreakdown: data.budgetBreakdown,
+        isPublic: data.isPublic,
+        shareToken: data.isPublic ? generateShareToken() : null,
+        guestName: data.guestName || null,
+        guestEmail: data.guestEmail || null,
+        guestPhone: data.guestPhone || null,
+        itinerary: {
+          create: data.itinerary.map((day) => ({
+            dayNumber: day.dayNumber,
+            title: day.title,
+            activities: {
+              create: day.activities.map((activity) => ({
+                time: activity.time,
+                title: activity.title,
+                description: activity.description,
+                locationName: activity.locationName,
+                lat: activity.lat,
+                lng: activity.lng,
+                category: activity.category,
+                cost: activity.cost,
+              })),
+            },
+          })),
+        },
+        hotels: {
+          create: data.hotels.map((hotel) => ({
+            name: hotel.name,
+            rating: hotel.rating,
+            pricePerNight: hotel.pricePerNight,
+            lat: hotel.lat,
+            lng: hotel.lng,
+          })),
+        },
+      },
+      include: {
+        itinerary: { include: { activities: true } },
+        hotels: true,
+      },
+    });
+
+    res.status(201).json({ success: true, data: trip });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteTrip(req: Request, res: Response, next: NextFunction) {
+  try {
+    const trip = await prisma.trip.findUnique({ where: { id: (req.params.id as string) } });
+    if (!trip) throw new NotFoundError('Trip not found');
+
+    // Only owner or admin can delete
+    if (trip.userId !== req.user?.userId && !['SUPERADMIN', 'STAFF'].includes(req.user?.role || '')) {
+      throw new ForbiddenError('You can only delete your own trips');
+    }
+
+    await prisma.trip.delete({ where: { id: (req.params.id as string) } });
+    res.json({ success: true, message: 'Trip deleted' });
+  } catch (err) {
+    next(err);
+  }
+}
