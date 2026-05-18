@@ -231,26 +231,21 @@ export default function TripForm({ onSubmit, initialData }: Props) {
                     <span className="text-2xl">{p.emoji}</span>
                     <div>
                       <div className="text-sm font-semibold text-foreground">{p.label}</div>
-                      <div className="text-xs text-muted-foreground">₹{p.value.toLocaleString()}</div>
                     </div>
                   </button>
                 ))}
               </div>
-              {/* Custom input */}
-              <div className="relative group">
-                <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                <Input
-                  type="number"
-                  value={budget}
-                  onChange={(e) => setBudget(Number(e.target.value))}
-                  className="pl-11 h-12 text-base rounded-xl border-border/60 bg-background/50 focus:border-primary/60"
-                  min={1}
-                  onKeyDown={(e) => e.key === "Enter" && canNext() && next()}
-                />
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">~₹{Math.round(budget / days)}/day</span>
-                <span className="text-emerald-500 font-medium">
+              {/* Custom input - hidden */}
+              <input
+                type="number"
+                value={budget}
+                onChange={(e) => setBudget(Number(e.target.value))}
+                min={1}
+                className="hidden"
+                onKeyDown={(e) => e.key === "Enter" && canNext() && next()}
+              />
+              <div className="text-center">
+                <span className="text-emerald-500 font-medium text-sm">
                   {budget < 800 ? "Budget trip 🎒" : budget < 2500 ? "Mid-range ✈️" : budget < 5000 ? "Comfortable 🏨" : "Luxury 💎"}
                 </span>
               </div>
